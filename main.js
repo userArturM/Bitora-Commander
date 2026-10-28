@@ -13,7 +13,7 @@ function archiveTask(kind,args){return new Promise((resolve,reject)=>{const work
 async function saveConfig(value){config={...config,...value};configWrite=configWrite.catch(()=>{}).then(async()=>{const dest=path.join(app.getPath('userData'),'settings.json');await fs.mkdir(path.dirname(dest),{recursive:true});await fs.writeFile(dest+'.tmp',JSON.stringify(config));await fs.rename(dest+'.tmp',dest);});await configWrite;}
 app.whenReady().then(async()=>{
  try{config=JSON.parse(await fs.readFile(path.join(app.getPath('userData'),'settings.json'),'utf8'));}catch{}
- win=new BrowserWindow({width:1360,height:880,minWidth:900,minHeight:600,title:'Bitora Commander',backgroundColor:'#111b22',icon:path.join(__dirname,'assets/icon.ico'),webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+ win=new BrowserWindow({width:1360,height:880,minWidth:900,minHeight:600,title:'Bitora Commander',autoHideMenuBar:true,backgroundColor:'#111b22',icon:path.join(__dirname,'assets/icon.ico'),webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
  win.webContents.on('will-prevent-unload',event=>{const result=dialog.showMessageBoxSync(win,{type:'question',message:'Закрыть без сохранения текста?',buttons:['Отмена','Закрыть'],defaultId:0,cancelId:0});if(result===1)event.preventDefault();});
  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',e=>e.preventDefault());win.webContents.session.setPermissionRequestHandler((w,p,cb)=>cb(false));
  Menu.setApplicationMenu(Menu.buildFromTemplate([
