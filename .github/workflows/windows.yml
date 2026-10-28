@@ -5,17 +5,28 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  actions: write
+concurrency:
+  group: commander-windows-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   windows:
     runs-on: windows-latest
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - name: Stop superseded builds
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ids = gh run list --workflow windows.yml --branch main --json databaseId,status --jq '.[] | select(.status == "in_progress" or .status == "queued") | .databaseId'
+          foreach ($id in $ids) { if ([long]$id -lt [long]$env:GITHUB_RUN_ID) { gh run cancel $id } }
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts --omit=optional
       - run: node node_modules/electron/install.js
       - name: Bundle official 7-Zip
         shell: pwsh
@@ -58,6 +69,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          $head = gh api repos/${{ github.repository }}/git/ref/heads/main --jq '.object.sha'
+          if ($head -ne $env:GITHUB_SHA) { Write-Output 'Superseded commit; no release published.'; exit 0 }
           gh release view v2.0.0 *> $null
           if ($LASTEXITCODE -ne 0) { gh release create v2.0.0 --title 'Bitora Commander 2.0.0' --notes-file RELEASE_NOTES.md --target $env:GITHUB_SHA }
           if ($LASTEXITCODE -ne 0) { throw 'Release creation failed' }
