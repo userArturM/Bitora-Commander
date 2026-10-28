@@ -1,0 +1,60 @@
+name: Windows build and release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: node node_modules/electron/install.js
+      - run: npm test
+      - name: Native application functional tests
+        shell: pwsh
+        run: ./qa/windows.ps1 -Executable "$pwd/node_modules/electron/dist/electron.exe" -AppArguments '. --functional-test' -Label source
+      - run: npm run dist:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - name: Packaged and portable functional tests
+        shell: pwsh
+        run: |
+          ./qa/windows.ps1 -Executable "$pwd/release/win-unpacked/Bitora Commander.exe" -Label packaged
+          ./qa/windows.ps1 -Executable "$pwd/release/Bitora-Commander-Portable-1.0.0-x64.exe" -Label portable
+      - name: Installer functional test
+        shell: pwsh
+        run: |
+          $dest = Join-Path $env:LOCALAPPDATA "Bitora Commander 'Тест' #100%"
+          $p = Start-Process "$pwd/release/Bitora-Commander-Setup-1.0.0-x64.exe" -ArgumentList "/S /D=$dest" -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw 'Installation failed' }
+          ./qa/windows.ps1 -Executable "$dest/Bitora Commander.exe" -Label installed
+          Start-Process "$dest/Uninstall Bitora Commander.exe" -ArgumentList '/S' -Wait
+      - name: Checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem release/*.exe | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content release/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: Bitora-Commander-Windows
+          path: |
+            release/*.exe
+            release/SHA256SUMS.txt
+      - name: Publish release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view v1.0.0 *> $null
+          if ($LASTEXITCODE -ne 0) { gh release create v1.0.0 --title 'Bitora Commander 1.0.0' --notes-file RELEASE_NOTES.md --target $env:GITHUB_SHA }
+          if ($LASTEXITCODE -ne 0) { throw 'Release creation failed' }
+          gh release upload v1.0.0 release/Bitora-Commander-Setup-1.0.0-x64.exe release/Bitora-Commander-Portable-1.0.0-x64.exe release/SHA256SUMS.txt --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Release upload failed' }
