@@ -3,7 +3,7 @@ const {app,BrowserWindow,ipcMain,dialog,shell,Menu,nativeImage}=require('electro
 const fs=require('node:fs/promises'),path=require('node:path'),os=require('node:os'),{pathToFileURL,fileURLToPath}=require('node:url'),{Worker}=require('node:worker_threads'),C=require('./core');
 const testing=process.argv.includes('--functional-test')||process.argv.includes('--smoke-test');
 if(process.env.PORTABLE_EXECUTABLE_DIR)app.setPath('userData',path.join(process.env.PORTABLE_EXECUTABLE_DIR,'BitoraCommander-Data'));
-if(!testing&&!app.requestSingleInstanceLock())app.quit();
+if(!testing&&!app.requestSingleInstanceLock())app.exit(0);
 let win,job=null,config={},configWrite=Promise.resolve();const page=path.join(__dirname,'index.html');
 function trusted(e){if(!win||e.sender!==win.webContents||e.senderFrame!==win.webContents.mainFrame)throw Error('Доступ запрещён');const u=new URL(e.senderFrame.url);if(u.protocol!=='file:'||u.search||u.hash||path.resolve(fileURLToPath(u)).toLowerCase()!==page.toLowerCase())throw Error('Доступ запрещён');}
 function handle(name,fn){ipcMain.handle(name,async(e,...args)=>{trusted(e);try{return await fn(...args);}catch(error){if(error.name==='AbortError')throw Error('Операция отменена. Уже завершённые файлы сохранены.');const codes={EACCES:'Нет доступа к файлу или папке.',EPERM:'Операция запрещена или файл занят.',ENOENT:'Файл или папка больше не существует.',ENOSPC:'Недостаточно места на диске.',EBUSY:'Файл используется другой программой.'};throw Error(codes[error.code]||error.message);}});}
@@ -39,6 +39,7 @@ app.whenReady().then(async()=>{
  handle('archive',(paths,target)=>runJob('zip',()=>archiveTask('create',[paths,target])));
  handle('extract',(p,target)=>runJob('unzip',()=>archiveTask('extract',[p,target])));
  win.on('close',e=>{if(job){e.preventDefault();dialog.showMessageBox(win,{message:'Дождитесь окончания операции или отмените её кнопкой «Отмена».',buttons:['OK']});}});
+ require('./features')({win,handle,command,testing});
  await win.loadURL(pathToFileURL(page).href);
  if(testing){const report=process.env.BITORA_TEST_REPORT;try{const result=await require('./qa/functional.cjs')({win,app,C});if(report)await fs.writeFile(report,JSON.stringify(result,null,2));app.exit(0);}catch(e){if(report)await fs.writeFile(report,JSON.stringify({error:e.stack||String(e)}));app.exit(2);}}
 }).catch(e=>{dialog.showErrorBox('Bitora Commander',e.message);app.quit();});
