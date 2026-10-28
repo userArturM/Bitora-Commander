@@ -22,9 +22,9 @@ module.exports=async({win,app,C})=>{
 
  // Verify the redesigned workspace with real Electron IPC and file contents.
  win.setContentSize(1360,850);await wait('innerWidth>=1100');
- await js(`setActive(0);panes[0].selection=new Set([${JSON.stringify(path.join(left,'Тест.txt'))}]);previewRequested=true;applyPreviewLayout();renderRows(0);void 0`);
+ await js(`setActive(0);panes[0].selection=new Set([panes[0].items.find(f=>f.name==='Тест.txt').path]);previewRequested=true;applyPreviewLayout();renderRows(0);void 0`);
  await wait('!document.getElementById("previewText").hidden&&document.getElementById("previewText").textContent==="edited"');
- const png=path.join(left,'preview.png'),{nativeImage}=require('electron');await fs.writeFile(png,nativeImage.createFromBitmap(Buffer.alloc(16,180),{width:2,height:2}).toPNG());await js('refresh()');await js(`panes[0].selection=new Set([${JSON.stringify(png)}]);renderRows(0);void 0`);
+ const png=path.join(left,'preview.png'),{nativeImage}=require('electron');await fs.writeFile(png,nativeImage.createFromBitmap(Buffer.alloc(16,180),{width:2,height:2}).toPNG());await js('refresh()');await js(`panes[0].selection=new Set([panes[0].items.find(f=>f.name==='preview.png').path]);renderRows(0);void 0`);
  await wait('!document.getElementById("previewImage").hidden&&document.getElementById("previewImage").naturalWidth===2');
  assert.equal(await js('getComputedStyle(document.getElementById("queuePanel")).position'),'static');
  assert.equal(await js('document.getElementById("panes").getBoundingClientRect().bottom<=document.getElementById("queuePanel").getBoundingClientRect().top+1'),true);
