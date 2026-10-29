@@ -31,8 +31,24 @@ module.exports=async({win,app,C})=>{
  await js('document.querySelector(".command-menu summary").click()');await wait('document.querySelector(".command-menu").open');await js('closeMenus()');
  await js('editPath(0)');assert.equal(await js('panes[0].root.classList.contains("edit-path")'),true);await js('panes[0].root.classList.remove("edit-path")');
  win.setContentSize(900,600);await wait('document.getElementById("previewPanel").hidden');assert.equal(await js('document.documentElement.scrollWidth<=innerWidth'),true);win.setContentSize(1360,850);
+ // Folder display and navigation regressions with actual Windows entries.
+ await js('api.watch([])');
+ await js(`navigate(0,${JSON.stringify(left)})`);
+ await wait('panes[0].body.querySelector(".file-icon.folder svg")!==null');
+ const folderPath=await js('panes[0].items.find(f=>f.name==="Переименована").path');
+ await fs.writeFile(path.join(folderPath,'внутри.txt'),'nested');
+ await js('panes[0].filterInput.value="Переименована";panes[0].filterInput.dispatchEvent(new Event("input"));void 0');
+ const point=await js('(()=>{const r=panes[0].body.querySelector("tr[title]").getBoundingClientRect();return {x:Math.round(r.x+45),y:Math.round(r.y+r.height/2)};})()');
+ for(const count of [1,2]){win.webContents.sendInputEvent({type:'mouseDown',button:'left',clickCount:count,...point});win.webContents.sendInputEvent({type:'mouseUp',button:'left',clickCount:count,...point});await new Promise(r=>setTimeout(r,100));}
+ await wait('panes[0].items.some(f=>f.name==="внутри.txt")');
+ assert.equal(await js('panes[0].filterInput.value'),'');
+ assert.equal(await js('panes[0].body.querySelectorAll("tr[title]").length'),1);
+ await js(`navigate(0,${JSON.stringify(left)})`);
+ await js('panes[0].selection=new Set([panes[0].items.find(f=>f.name==="Тест.txt").path]);renderRows(0);panes[0].filterInput.value="Переименована";panes[0].filterInput.dispatchEvent(new Event("input"));void 0');
+ assert.equal(await js('selected(panes[0]).length'),0);
+ await js('panes[0].filterInput.value="";panes[0].filterInput.dispatchEvent(new Event("input"));void 0');
  await js('api.watch([])');
  const foreign=await js('document.querySelectorAll(".pane").length');assert.equal(foreign,2);assert.equal(await js('document.documentElement.scrollWidth<=innerWidth'),true);
- return {passed:true,checks:['native app startup','Cyrillic and special paths','two real directory panels','confirmed copy through UI','UTF-8 editor save through UI','tabs','ZIP create and extract via worker','recursive search','mkdir and rename','no horizontal overflow','native file clipboard','Windows shell icons','DPAPI protected password','live folder watcher','bundled 7-Zip create/list/selective extraction','advanced text search','inline UTF-8 preview','inline image preview','queue dock does not overlap file panels','grouped command menus','editable breadcrumb address','responsive narrow window']};
+ return {passed:true,checks:['native app startup','Cyrillic and special paths','two real directory panels','confirmed copy through UI','UTF-8 editor save through UI','tabs','ZIP create and extract via worker','recursive search','mkdir and rename','no horizontal overflow','native file clipboard','Windows shell icons','DPAPI protected password','live folder watcher','bundled 7-Zip create/list/selective extraction','advanced text search','inline UTF-8 preview','inline image preview','queue dock does not overlap file panels','grouped command menus','editable breadcrumb address','responsive narrow window','vector folder icons','real mouse double-click opens folder','filter resets between folders','filtered-out files excluded from operations']};
  }finally{await fs.rm(root,{recursive:true,force:true});}
 };
