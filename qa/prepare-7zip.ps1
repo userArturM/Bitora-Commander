@@ -1,5 +1,7 @@
 $ErrorActionPreference = 'Stop'
-$release = Invoke-RestMethod 'https://api.github.com/repos/ip7z/7zip/releases/tags/26.05'
+$headers = @{ Accept = 'application/vnd.github+json' }
+if ($env:GH_TOKEN) { $headers.Authorization = "Bearer $env:GH_TOKEN" }
+$release = Invoke-RestMethod 'https://api.github.com/repos/ip7z/7zip/releases/tags/26.05' -Headers $headers -MaximumRetryCount 3 -RetryIntervalSec 5
 $asset = $release.assets | Where-Object name -eq '7z2605-x64.exe'
 if (!$asset) { throw 'Official 7-Zip asset not found' }
 $installer = Join-Path $env:RUNNER_TEMP '7z2605-x64.exe'

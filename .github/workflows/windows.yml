@@ -30,6 +30,8 @@ jobs:
       - run: node node_modules/electron/install.js
       - name: Bundle official 7-Zip
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: ./qa/prepare-7zip.ps1
       - run: npm test
       - name: Native application functional tests
