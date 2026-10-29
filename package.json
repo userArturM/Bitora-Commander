@@ -1,7 +1,7 @@
 {
   "name": "bitora-commander",
   "productName": "Bitora Commander",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Двухпанельный файловый менеджер для Windows",
   "author": "Bitora",
   "license": "MIT",
@@ -57,7 +57,9 @@
       ],
       "language": "1049",
       "artifactName": "Bitora-Commander-Setup-${version}-${arch}.${ext}",
-      "deleteAppDataOnUninstall": false
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico"
     },
     "portable": {
       "artifactName": "Bitora-Commander-Portable-${version}-${arch}.${ext}",
