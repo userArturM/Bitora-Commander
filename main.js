@@ -4,9 +4,9 @@ const fs=require('node:fs/promises'),path=require('node:path'),os=require('node:
 const testing=process.argv.includes('--functional-test')||process.argv.includes('--smoke-test');
 if(process.env.PORTABLE_EXECUTABLE_DIR)app.setPath('userData',path.join(process.env.PORTABLE_EXECUTABLE_DIR,'BitoraCommander-Data'));
 if(!testing&&!app.requestSingleInstanceLock())app.exit(0);
-let win,job=null,config={},configWrite=Promise.resolve();const page=path.join(__dirname,'index.html');
+let win,updater,updateClosing=false,job=null,config={},configWrite=Promise.resolve();const page=path.join(__dirname,'index.html');
 function trusted(e){if(!win||e.sender!==win.webContents||e.senderFrame!==win.webContents.mainFrame)throw Error('Доступ запрещён');const u=new URL(e.senderFrame.url);if(u.protocol!=='file:'||u.search||u.hash||path.resolve(fileURLToPath(u)).toLowerCase()!==page.toLowerCase())throw Error('Доступ запрещён');}
-function handle(name,fn){ipcMain.handle(name,async(e,...args)=>{trusted(e);try{return await fn(...args);}catch(error){require('./work-main').record(name,error);if(error.name==='AbortError')throw Error('Операция отменена. Уже завершённые файлы сохранены.');const codes={EACCES:'Нет доступа к файлу или папке.',EPERM:'Операция запрещена или файл занят.',ENOENT:'Файл или папка больше не существует.',ENOSPC:'Недостаточно места на диске.',EBUSY:'Файл используется другой программой.'};throw Error(codes[error.code]||error.message);}});}
+function handle(name,fn){ipcMain.handle(name,async(e,...args)=>{trusted(e);try{if(updateClosing&&!['updateCancel','updateState','reportError'].includes(name))throw Error('Приложение закрывается для обновления.');return await fn(...args);}catch(error){require('./work-main').record(name,error);if(error.name==='AbortError')throw Error('Операция отменена. Уже завершённые файлы сохранены.');const codes={EACCES:'Нет доступа к файлу или папке.',EPERM:'Операция запрещена или файл занят.',ENOENT:'Файл или папка больше не существует.',ENOSPC:'Недостаточно места на диске.',EBUSY:'Файл используется другой программой.'};throw Error(codes[error.code]||error.message);}});}
 const command=c=>win?.webContents.send('command',c);
 async function runJob(kind,fn){if(job)throw Error('Дождитесь завершения текущей операции.');const controller=new AbortController();job={kind,controller};win.webContents.send('progress',{kind,started:true});try{return await fn(controller.signal,p=>win.webContents.send('progress',{kind,...p}));}finally{job=null;win.webContents.send('progress',{done:true});}}
 function archiveTask(kind,args){return new Promise((resolve,reject)=>{const worker=new Worker(path.join(__dirname,'archive-worker.js'),{workerData:{kind,args}});worker.once('message',m=>m.error?reject(Error(m.error)):resolve(m.result));worker.once('error',reject);worker.once('exit',c=>{if(c)reject(Error('Обработка архива прервана.'));});});}
@@ -17,7 +17,7 @@ app.whenReady().then(async()=>{
  win=new BrowserWindow({...bounds,minWidth:900,minHeight:600,title:'Bitora Commander',autoHideMenuBar:true,backgroundColor:'#111b22',icon:path.join(__dirname,'assets/icon.ico'),webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
  if(!testing&&config.window?.maximized)win.maximize();
  let boundsTimer;const persistBounds=()=>{if(testing||win.isDestroyed()||win.isMinimized())return;clearTimeout(boundsTimer);boundsTimer=setTimeout(()=>saveConfig({window:{bounds:win.getNormalBounds(),maximized:win.isMaximized()}}).catch(e=>require('./work-main').record('settings',e)),200);};win.on('resize',persistBounds);win.on('move',persistBounds);win.on('close',()=>{clearTimeout(boundsTimer);if(!testing){config.window={bounds:win.getNormalBounds(),maximized:win.isMaximized()};try{const file=path.join(app.getPath('userData'),'settings.json'),syncFs=require('node:fs');syncFs.mkdirSync(path.dirname(file),{recursive:true});syncFs.writeFileSync(file+'.closing',JSON.stringify(config));syncFs.renameSync(file+'.closing',file);}catch(e){require('./work-main').record('settings',e);}}});
- win.webContents.on('will-prevent-unload',event=>{const result=dialog.showMessageBoxSync(win,{type:'question',message:'Закрыть без сохранения текста?',buttons:['Отмена','Закрыть'],defaultId:0,cancelId:0});if(result===1)event.preventDefault();});
+ win.webContents.on('will-prevent-unload',event=>{const result=dialog.showMessageBoxSync(win,{type:'question',message:'Закрыть без сохранения текста?',buttons:['Отмена','Закрыть'],defaultId:0,cancelId:0});if(result===1)event.preventDefault();else updater?.cancelClose();});
  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',e=>e.preventDefault());win.webContents.session.setPermissionRequestHandler((w,p,cb)=>cb(false));
  Menu.setApplicationMenu(Menu.buildFromTemplate([
  {label:'Файлы',submenu:[{label:'Просмотр',click:()=>command('view')},{label:'Правка',click:()=>command('edit')},{label:'Новая папка',click:()=>command('mkdir')},{type:'separator'},{role:'quit',label:'Выход'}]},
@@ -42,8 +42,9 @@ app.whenReady().then(async()=>{
  handle('archive',(paths,target)=>runJob('zip',()=>archiveTask('create',[paths,target])));
  handle('extract',(p,target)=>runJob('unzip',()=>archiveTask('extract',[p,target])));
  win.on('close',e=>{if(job){e.preventDefault();dialog.showMessageBox(win,{message:'Дождитесь окончания операции или отмените её кнопкой «Отмена».',buttons:['OK']});}});
- require('./features')({win,handle,command,testing});
- require('./work-main').install({win,handle});
+ const features=require('./features')({win,handle,command,testing});
+ const work=require('./work-main').install({win,handle});
+ updater=require('./updater')({win,handle,testing,isBusy:()=>!!job||features.isBusy()||work.isBusy(),setClosing:value=>updateClosing=value});
  await win.loadURL(pathToFileURL(page).href);
  if(testing){const report=process.env.BITORA_TEST_REPORT;try{const result=await require('./qa/functional.cjs')({win,app,C});if(report)await fs.writeFile(report,JSON.stringify(result,null,2));app.exit(0);}catch(e){if(report)await fs.writeFile(report,JSON.stringify({error:e.stack||String(e)}));app.exit(2);}}
 }).catch(e=>{dialog.showErrorBox('Bitora Commander',e.message);app.quit();});

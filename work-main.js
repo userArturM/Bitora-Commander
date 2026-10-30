@@ -9,6 +9,6 @@ function install({win,handle}){let controller,rename=null,renameRevision=0,dupli
  handle('reportError',entry=>{record('interface',String(entry).slice(0,2000));});
  handle('diagnostics',async()=>{const r=await dialog.showSaveDialog(win,{title:'Сохранить отчёт диагностики',defaultPath:'Bitora-Commander-diagnostics.json',filters:[{name:'JSON',extensions:['json']}]});if(r.canceled||!r.filePath)return null;await logWrite;const history=(await fs.readFile(logFile(),'utf8').catch(()=>'' )).trim().split('\n').filter(Boolean).slice(-100).map(line=>{try{return JSON.parse(line);}catch{return {message:'Повреждённая строка журнала'};}});const report={version:app.getVersion(),platform:process.platform,release:os.release(),arch:process.arch,electron:process.versions.electron,time:new Date().toISOString(),errors:history};await fs.writeFile(r.filePath,JSON.stringify(report,null,2));return r.filePath;});
  win.on('close',e=>{if(writing){e.preventDefault();dialog.showMessageBox(win,{message:'Дождитесь завершения изменения файлов.',buttons:['OK']});}});
- win.webContents.on('render-process-gone',(_,details)=>record('renderer',details.reason));win.on('closed',()=>controller?.abort());
+ win.webContents.on('render-process-gone',(_,details)=>record('renderer',details.reason));win.on('closed',()=>controller?.abort());return {isBusy:()=>writing||!!controller};
 }
 module.exports={install,record};
