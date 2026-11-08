@@ -9,3 +9,25 @@ body{gap:0}button,input,select,textarea{font-size:inherit;border-radius:3px}butt
 dialog{border-radius:4px;padding:12px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);box-shadow:0 14px 48px #0008}dialog h2{font-size:16px;margin:0 0 8px}dialog p{margin:7px 0}.dialog-title{padding:0 0 7px;cursor:move;touch-action:none}.dialog-title button{font-size:12px}#inputDialog{width:450px}#confirmDialog{width:560px}#confirmDetails{white-space:pre-wrap;overflow-wrap:anywhere;max-height:45vh;overflow:auto}.form-grid{gap:7px}.form-grid input,.form-grid select{padding:4px 6px;min-height:28px}.dialog-actions{margin-top:8px;gap:6px}dialog.tool-dialog{width:900px;height:620px;resize:both;overflow:auto;min-width:360px;min-height:240px}.result-list{max-height:50vh}.command-output{white-space:pre-wrap;overflow:auto;font:12px Consolas,monospace}.chunk-toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap}#chunkText{white-space:pre-wrap;overflow:auto;max-height:70vh;font:13px Consolas,monospace;user-select:text}.diff-columns{display:grid;grid-template-columns:1fr 1fr;gap:8px}.diff-columns pre{overflow:auto;white-space:pre-wrap;font:12px Consolas,monospace}.diff-change{background:#54462b}.pin-tab{color:#d4ec74}.tool-dialog .result-list{max-height:none}.queue-compact-pause{margin-left:auto}
 @media(max-width:800px){.quick-search{display:none}.places{display:none}.functions button{font-size:11px}.functions button:last-child{display:none}#panes{grid-template-columns:minmax(120px,var(--split,50%)) 4px minmax(120px,1fr)}}
 @media(max-width:1100px){#workspace.quick-view #previewPanel:not([hidden]){display:block}#workspace.quick-view{grid-template-columns:1fr 1fr}}
+
+
+/* Bitora 3.0 visual foundation: shared palette and density-preserving controls */
+:root[data-theme=lime]{--bg:#14181d;--panel:#1b2027;--line:#35404b;--text:#e9f0f1;--muted:#9baab6;--lime:#b8f34b;color-scheme:dark}
+:root[data-theme=graphite]{--bg:#17191d;--panel:#22252b;--line:#41464f;--text:#e6e8eb;--muted:#adb2ba;--lime:#c8d0da;color-scheme:dark}
+:root[data-theme=light]{--bg:#f3f5f7;--panel:#fff;--line:#c9d1dc;--text:#202833;--muted:#586574;--lime:#4d7d21;color-scheme:light}
+:root[data-theme] body{background:var(--bg);color:var(--text)}
+:root[data-theme] .pane{background:var(--panel);border-color:var(--line)}
+:root[data-theme] button,:root[data-theme] input,:root[data-theme] select,:root[data-theme] textarea{color:var(--text);border-color:var(--line);background:var(--panel)}
+:root[data-theme] button:hover{border-color:var(--lime);background:color-mix(in srgb,var(--panel) 82%,var(--lime))}
+:root[data-theme] .pane.active{border-color:var(--lime)}
+:root[data-theme] .pane.active .address{background:color-mix(in srgb,var(--panel) 88%,var(--lime));border-bottom-color:var(--lime)}
+:root[data-theme] .tab.selected{background:color-mix(in srgb,var(--panel) 84%,var(--lime));box-shadow:inset 0 -2px var(--lime)}
+:root[data-theme] .table-wrap th{background:var(--panel);color:var(--muted)}
+:root[data-theme] .table-wrap tbody tr:hover{background:color-mix(in srgb,var(--panel) 87%,var(--lime))}
+:root[data-theme] .toolbar{background:var(--panel)}
+:root[data-theme] .tabs{scrollbar-width:thin}
+:root[data-density=ultra] .toolbar{min-height:27px;padding-block:1px}
+:root[data-density=ultra] .toolbar button{min-height:22px;padding-block:1px}
+:root[data-density=ultra] .tabs,:root[data-density=ultra] .tabs button{height:23px;min-height:23px}
+:root[data-density=ultra] .address{min-height:25px}
+:root[data-density=ultra] .table-wrap th{height:22px}
