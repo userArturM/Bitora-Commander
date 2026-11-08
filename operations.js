@@ -7,8 +7,8 @@ async function transfer(paths,target,{move=false,signal,onProgress=()=>{},resolv
  target=await C.directory(target);if(!Array.isArray(paths)||!paths.length)throw Error('Выберите файлы.');paths=[...new Set(paths.map(C.absolute))];
  for(const p of paths){if(C.inside(await fs.realpath(p),target))throw Error('Нельзя копировать объект в себя.');if(paths.some(q=>q!==p&&C.inside(q,p)))throw Error('Выберите папку или её содержимое, но не оба сразу.');}
  const rate=Number(speedLimitMBps);if(!Number.isFinite(rate)||rate<0||rate>1024)throw Error('Некорректный лимит скорости копирования.');
- const bytesPerSecond=rate*1024*1024,started=Date.now();let paced=0;
- async function throttle(bytes){if(!bytesPerSecond)return;paced+=bytes;const due=started+paced/bytesPerSecond*1000;while(Date.now()<due){signal?.throwIfAborted();await signal?.waitIfPaused?.();await new Promise(resolve=>setTimeout(resolve,Math.min(60,Math.max(1,due-Date.now()))));}signal?.throwIfAborted();}
+ const bytesPerSecond=rate*1024*1024;let started=0,paced=0;
+ async function throttle(bytes){if(!bytesPerSecond)return;if(!started)started=Date.now();paced+=bytes;const due=started+paced/bytesPerSecond*1000;while(Date.now()<due){signal?.throwIfAborted();await signal?.waitIfPaused?.();await new Promise(resolve=>setTimeout(resolve,Math.min(60,Math.max(1,due-Date.now()))));}signal?.throwIfAborted();}
  let total=0,completed=0,allPolicy=null;const failures=[],done=[],skipped=[];const plans=[];
  for(const p of paths){const entries=await C.scan(p,signal);total+=entries.reduce((n,e)=>n+(e.dir?0:e.size),0);plans.push({p,entries});}
  const targetDevice=(await fs.stat(target)).dev;const required=move?(await Promise.all(plans.map(async plan=>(await fs.lstat(plan.p)).dev===targetDevice?0:plan.entries.reduce((n,e)=>n+(e.dir?0:e.size),0)))).reduce((a,b)=>a+b,0):total;const disk=await fs.statfs(target).catch(()=>null);if(disk&&Number(disk.bavail)*Number(disk.bsize)<required)throw Error('Недостаточно свободного места для безопасного копирования.');
