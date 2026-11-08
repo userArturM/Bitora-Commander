@@ -27,3 +27,11 @@ test('verified partial is resumed and atomically published',async t=>{const {src
 test('damaged resume data is never published or deleted',async t=>{const {src,dest}=await setup(t);const file=path.join(src,'damaged.bin'),tmp=path.join(dest,'.bitora-local-deadbeef-123e4567-e89b-12d3-a456-426614174000.partial');await fs.writeFile(file,'valid complete data');await fs.writeFile(tmp,'invalid');const result=await O.transfer([file],dest,{resumePartials:{[file]:tmp}});assert.equal(result.failures.length,1);assert.deepEqual(await fs.readdir(dest),[path.basename(tmp)]);});
 
 test('interrupted local transfer retains verified recovery staging when enabled',async t=>{const {src,dest}=await setup(t);const file=path.join(src,'recoverable.bin');await fs.writeFile(file,Buffer.alloc(1024*1024,42));const controller=new AbortController();const rows=[];setTimeout(()=>controller.abort(),600);await assert.rejects(O.transfer([file],dest,{signal:controller.signal,speedLimitMBps:0.25,preservePartial:true,onPartial:r=>rows.push(r)}));assert.ok(rows.length<=1);if(rows.length){assert.equal(rows[0].source,file);assert.ok(rows[0].size>0);assert.equal((await require('../resume-local').verifyPartial(file,path.join(dest,'recoverable.bin'),rows[0].temporary)).offset,rows[0].size);}else assert.deepEqual(await fs.readdir(dest),[]);});
+
+test('concurrent queue runs independent resources but serializes overlapping destinations',async()=>{
+ const q=new O.Queue();q.pause(true);q.setConcurrency(3);let running=0,max=0;const starts=[];
+ const task=label=>async()=>{running++;max=Math.max(max,running);starts.push(label);await new Promise(r=>setTimeout(r,60));running--;};
+ q.add('a',task('a'),undefined,0,'C:\\files\\a');q.add('same',task('same'),undefined,0,'C:\\files\\a\\nested');q.add('b',task('b'),undefined,0,'D:\\files\\b');
+ q.pause(false);for(let n=0;n<100&&q.snapshot().some(x=>['waiting','running'].includes(x.status));n++)await new Promise(r=>setTimeout(r,10));
+ assert.equal(max,2);assert.equal(q.snapshot().filter(x=>x.status==='done').length,3);assert.ok(starts.indexOf('same')>starts.indexOf('a'));assert.throws(()=>q.setConcurrency(5),/1 до 4/);
+});
