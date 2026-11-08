@@ -22,15 +22,15 @@ module.exports=async({win,app,C})=>{
 
  // Verify the redesigned workspace with real Electron IPC and file contents.
  win.setContentSize(1360,850);await wait('innerWidth>=1100');
- await js(`setActive(0);panes[0].selection=new Set([panes[0].items.find(f=>f.name==='Тест.txt').path]);previewRequested=true;applyPreviewLayout();renderRows(0);void 0`);
+ await js(`setActive(0);panes[0].selection.clear();panes[0].cursor=visible(panes[0]).findIndex(f=>f.name==='Тест.txt');previewRequested=true;applyPreviewLayout();renderRows(0);void 0`);
  await wait('!document.getElementById("previewText").hidden&&document.getElementById("previewText").textContent==="edited"');
- const png=path.join(left,'preview.png'),{nativeImage}=require('electron');await fs.writeFile(png,nativeImage.createFromBitmap(Buffer.alloc(16,180),{width:2,height:2}).toPNG());await js('refresh()');await js(`panes[0].selection=new Set([panes[0].items.find(f=>f.name==='preview.png').path]);renderRows(0);void 0`);
+ const png=path.join(left,'preview.png'),{nativeImage}=require('electron');await fs.writeFile(png,nativeImage.createFromBitmap(Buffer.alloc(16,180),{width:2,height:2}).toPNG());await js('refresh()');await js(`panes[0].selection.clear();panes[0].cursor=visible(panes[0]).findIndex(f=>f.name==='preview.png');renderRows(0);void 0`);
  await wait('!document.getElementById("previewImage").hidden&&document.getElementById("previewImage").naturalWidth===2');
  assert.equal(await js('getComputedStyle(document.getElementById("queuePanel")).position'),'static');
  assert.equal(await js('document.getElementById("panes").getBoundingClientRect().bottom<=document.getElementById("queuePanel").getBoundingClientRect().top+1'),true);
  await js('document.querySelector(".command-menu summary").click()');await wait('document.querySelector(".command-menu").open');await js('closeMenus()');
  await js('editPath(0)');assert.equal(await js('panes[0].root.classList.contains("edit-path")'),true);await js('panes[0].root.classList.remove("edit-path")');
- win.setContentSize(900,600);await wait('document.getElementById("previewPanel").hidden');assert.equal(await js('document.documentElement.scrollWidth<=innerWidth'),true);win.setContentSize(1360,850);
+ win.setContentSize(900,600);await js('previewRequested=false;applyPreviewLayout()');await wait('document.getElementById("previewPanel").hidden');assert.equal(await js('document.documentElement.scrollWidth<=innerWidth'),true);win.setContentSize(1360,850);
  // Folder display and navigation regressions with actual Windows entries.
  await js('api.watch([])');
  await js(`navigate(0,${JSON.stringify(left)})`);
@@ -61,6 +61,15 @@ module.exports=async({win,app,C})=>{
  // Update download integration uses an isolated fixture, never a real installer.
  const {net}=require('electron'),originalFetch=net.fetch,updateBytes=Buffer.from('fixture'),updateHash=require('node:crypto').createHash('sha256').update(updateBytes).digest('hex'),updateName='Bitora-Commander-'+(process.env.PORTABLE_EXECUTABLE_FILE?'Portable':'Setup')+'-99.0.0-x64.exe',updateBase='https://github.com/userArturM/Bitora-Commander/releases/download/v99.0.0/';
  try{net.fetch=async url=>new Response(String(url).endsWith('/latest')?JSON.stringify({tag_name:'v99.0.0',assets:[{name:updateName,size:updateBytes.length,browser_download_url:updateBase+updateName},{name:'SHA256SUMS.txt',browser_download_url:updateBase+'SHA256SUMS.txt'}]}):String(url).endsWith('.txt')?updateHash+'  '+updateName:updateBytes);assert.equal((await js('api.updates()')).newer,true);await js('api.updateDownload()');assert.equal((await js('api.updateState()')).status,'ready');await assert.rejects(js('api.updateInstall()'),/тестовом/);await js('api.updateCancel()');}finally{net.fetch=originalFetch;await fs.rm(path.join(app.getPath('userData'),'updates',updateName),{force:true});}
+ // Compact navigation: cursor is independent from marks; the final item is reachable without pagination.
+ const many=path.join(root,'Many');await fs.mkdir(many);await Promise.all(Array.from({length:620},(_,i)=>fs.writeFile(path.join(many,'file-'+String(i).padStart(4,'0')+'.txt'),'line '+i)));
+ await js(`navigate(0,${JSON.stringify(many)})`);await js('setActive(0);panes[0].root.focus();panes[0].selection.clear();panes[0].cursor=0;renderRows(0)');
+ win.webContents.sendInputEvent({type:'keyDown',keyCode:'Insert'});win.webContents.sendInputEvent({type:'keyUp',keyCode:'Insert'});await wait('panes[0].selection.size===1&&panes[0].cursor===1');
+ win.webContents.sendInputEvent({type:'keyDown',keyCode:'End'});win.webContents.sendInputEvent({type:'keyUp',keyCode:'End'});await wait('panes[0].cursor===619');await wait('panes[0].body.querySelector("tr.cursor").title.endsWith("file-0619.txt")');assert.equal(await js('panes[0].body.querySelectorAll("tr[title]").length<100'),true);assert.equal(await js('panes[0].selection.size'),1);
+ assert.equal(await js('Math.round(panes[0].body.querySelector("tr.cursor").getBoundingClientRect().height)'),24);
+ await js('run("view");void 0');await wait('document.getElementById("chunkDialog").open');assert.equal(await js('document.getElementById("chunkText").textContent'),'line 619');await js('document.getElementById("chunkDialog").close()');
+ const command=await js(`api.commandRun(${JSON.stringify(many)},'echo BITORA_QA')`);assert.ok(command.output.includes('BITORA_QA'));assert.equal(command.code,0);
+ await js(`openArchive(${JSON.stringify(seven)})`);assert.equal(await js('panes[0].archive.entries.some(e=>e.name==="Тест.txt")'),true);await js('leaveArchive(0)');
  const foreign=await js('document.querySelectorAll(".pane").length');assert.equal(foreign,2);assert.equal(await js('document.documentElement.scrollWidth<=innerWidth'),true);
  return {passed:true,checks:['native app startup','Cyrillic and special paths','two real directory panels','confirmed copy through UI','UTF-8 editor save through UI','tabs','ZIP create and extract via worker','recursive search','mkdir and rename','no horizontal overflow','native file clipboard','Windows shell icons','DPAPI protected password','live folder watcher','bundled 7-Zip create/list/selective extraction','advanced text search','inline UTF-8 preview','inline image preview','queue dock does not overlap file panels','grouped command menus','editable breadcrumb address','responsive narrow window','vector folder icons','real mouse double-click opens folder','filter resets between folders','filtered-out files excluded from operations','batch rename dialog and apply','recursive folder size','duplicate grouping and keep-one guard','column visibility','diagnostic export','update download with SHA-256 verification','test mode cannot execute installers']};
  }finally{await fs.rm(root,{recursive:true,force:true});}
