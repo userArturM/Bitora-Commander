@@ -5,7 +5,7 @@ test('verifyPartial accepts identical prefix and rejects mismatched bytes',async
  await fs.writeFile(source,Buffer.from('abcdefghij'));await fs.writeFile(tmp,Buffer.from('abcde'));
  assert.deepEqual((await R.verifyPartial(source,dest,tmp)).offset,5);
  await fs.writeFile(tmp,'abXde');await assert.rejects(R.verifyPartial(source,dest,tmp),/SHA-256/);
- await assert.rejects(R.verifyPartial(source,dest,path.join(root,'arbitrary.partial')),/пути/);
+ await assert.rejects(R.verifyPartial(source,dest,path.join(root,'arbitrary.partial')),/путь/);
  await fs.writeFile(tmp,'abcdefghijklmnop');await assert.rejects(R.verifyPartial(source,dest,tmp),/не соответствует/);
 });
 test('prefixHash rejects invalid size and supports zero bytes',async t=>{
