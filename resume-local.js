@@ -2,7 +2,7 @@
 const fs=require('node:fs/promises');
 const crypto=require('node:crypto');
 const {createReadStream}=require('node:fs');
-const {basename,dirname}=require('node:path');
+const {basename,dirname,join}=require('node:path');
 const STAGING=/^\.bitora-local-[0-9a-f]{8}-[0-9a-f-]{36}\.partial$/i;
 function validStaging(destination,temporary){
  if(typeof destination!=='string'||typeof temporary!=='string'||dirname(destination)!==dirname(temporary)||!STAGING.test(basename(temporary)))throw Error('Некорректный путь временного файла.');
@@ -19,7 +19,8 @@ async function prefixHash(file,bytes,signal){
  return hash.digest('hex');
 }
 async function verifyPartial(source,destination,temporary,signal){
- validStaging(destination,temporary);
+ const [destDir,tmpDir]=await Promise.all([fs.realpath(dirname(destination)),fs.realpath(dirname(temporary))]);
+ validStaging(join(destDir,basename(destination)),join(tmpDir,basename(temporary)));
  const [src,tmp]=await Promise.all([fs.lstat(source),fs.lstat(temporary)]);
  if(!src.isFile()||!tmp.isFile()||tmp.size>src.size)throw Error('Частичная копия не соответствует исходному файлу.');
  const [a,b]=await Promise.all([prefixHash(source,tmp.size,signal),prefixHash(temporary,tmp.size,signal)]);
