@@ -13,7 +13,17 @@ function archiveTask(kind,args){return new Promise((resolve,reject)=>{const work
 async function saveConfig(value){config={...config,...value};configWrite=configWrite.catch(()=>{}).then(async()=>{const dest=path.join(app.getPath('userData'),'settings.json');await fs.mkdir(path.dirname(dest),{recursive:true});await fs.writeFile(dest+'.tmp',JSON.stringify(config));await fs.rename(dest+'.tmp',dest);});await configWrite;}
 app.whenReady().then(async()=>{
  try{config=JSON.parse(await fs.readFile(path.join(app.getPath('userData'),'settings.json'),'utf8'));}catch{}
- const savedBounds=config.window?.bounds,display=require('electron').screen.getPrimaryDisplay().workArea;const bounds=savedBounds&&Number.isFinite(savedBounds.width)&&Number.isFinite(savedBounds.height)?{width:Math.max(900,Math.min(savedBounds.width,display.width)),height:Math.max(600,Math.min(savedBounds.height,display.height))}:{width:1360,height:880};
+ const screen=require('electron').screen,displays=screen.getAllDisplays(),primary=screen.getPrimaryDisplay().workArea,savedBounds=config.window?.bounds;
+ const finite=v=>typeof v==='number'&&Number.isFinite(v);
+ const validSize=savedBounds&&finite(savedBounds.width)&&finite(savedBounds.height);
+ const width=validSize?Math.max(900,Math.min(savedBounds.width,Math.max(900,primary.width))):Math.min(1360,Math.max(900,primary.width));
+ const height=validSize?Math.max(600,Math.min(savedBounds.height,Math.max(600,primary.height))):Math.min(880,Math.max(600,primary.height));
+ let bounds={width,height};
+ if(validSize&&finite(savedBounds.x)&&finite(savedBounds.y)){
+  const overlap=area=>Math.max(0,Math.min(savedBounds.x+width,area.x+area.width)-Math.max(savedBounds.x,area.x))*Math.max(0,Math.min(savedBounds.y+height,area.y+area.height)-Math.max(savedBounds.y,area.y));
+  const display=displays.map(d=>d.workArea).find(area=>overlap(area)>=Math.min(width,area.width)*Math.min(height,area.height)*0.25);
+  if(display)bounds={...bounds,x:Math.max(display.x,Math.min(savedBounds.x,display.x+display.width-width)),y:Math.max(display.y,Math.min(savedBounds.y,display.y+display.height-height))};
+ }
  win=new BrowserWindow({...bounds,minWidth:900,minHeight:600,title:'Bitora Commander',autoHideMenuBar:true,backgroundColor:'#111b22',icon:path.join(__dirname,'assets/icon.ico'),webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
  if(!testing&&config.window?.maximized)win.maximize();
  let boundsTimer;const persistBounds=()=>{if(testing||win.isDestroyed()||win.isMinimized())return;clearTimeout(boundsTimer);boundsTimer=setTimeout(()=>saveConfig({window:{bounds:win.getNormalBounds(),maximized:win.isMaximized()}}).catch(e=>require('./work-main').record('settings',e)),200);};win.on('resize',persistBounds);win.on('move',persistBounds);win.on('close',()=>{clearTimeout(boundsTimer);if(!testing){config.window={bounds:win.getNormalBounds(),maximized:win.isMaximized()};try{const file=path.join(app.getPath('userData'),'settings.json'),syncFs=require('node:fs');syncFs.mkdirSync(path.dirname(file),{recursive:true});syncFs.writeFileSync(file+'.closing',JSON.stringify(config));syncFs.renameSync(file+'.closing',file);}catch(e){require('./work-main').record('settings',e);}}});
