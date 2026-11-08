@@ -2,7 +2,13 @@
 const {app,BrowserWindow,ipcMain,dialog,shell,Menu,nativeImage}=require('electron');
 const fs=require('node:fs/promises'),path=require('node:path'),os=require('node:os'),{pathToFileURL,fileURLToPath}=require('node:url'),{Worker}=require('node:worker_threads'),C=require('./core');
 const testing=process.argv.includes('--functional-test')||process.argv.includes('--smoke-test');
-if(process.env.PORTABLE_EXECUTABLE_DIR)app.setPath('userData',path.join(process.env.PORTABLE_EXECUTABLE_DIR,'BitoraCommander-Data'));
+// Keep each native QA invocation isolated from prior source, packaged and portable runs.
+// Otherwise persisted tabs and settings make functional tests depend on execution order.
+if(testing){
+ const testData=require('node:fs').mkdtempSync(path.join(os.tmpdir(),'bitora-commander-qa-'));
+ app.setPath('userData',testData);
+ app.on('quit',()=>{try{require('node:fs').rmSync(testData,{recursive:true,force:true});}catch{}});
+}else if(process.env.PORTABLE_EXECUTABLE_DIR)app.setPath('userData',path.join(process.env.PORTABLE_EXECUTABLE_DIR,'BitoraCommander-Data'));
 if(!testing&&!app.requestSingleInstanceLock())app.exit(0);
 let win,updater,updateClosing=false,job=null,config={},configWrite=Promise.resolve();const page=path.join(__dirname,'index.html');
 function trusted(e){if(!win||e.sender!==win.webContents||e.senderFrame!==win.webContents.mainFrame)throw Error('Доступ запрещён');const u=new URL(e.senderFrame.url);if(u.protocol!=='file:'||u.search||u.hash||path.resolve(fileURLToPath(u)).toLowerCase()!==page.toLowerCase())throw Error('Доступ запрещён');}
