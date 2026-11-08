@@ -2,9 +2,7 @@
 const fs=require('node:fs/promises');
 const crypto=require('node:crypto');
 const {createReadStream}=require('node:fs');
-const {pipeline}=require('node:stream/promises');
-const {Writable}=require('node:stream');
-const {basename,dirname,join}=require('node:path');
+const {basename,dirname}=require('node:path');
 const STAGING=/^\.bitora-local-[0-9a-f]{8}-[0-9a-f-]{36}\.partial$/i;
 function validStaging(destination,temporary){
  if(typeof destination!=='string'||typeof temporary!=='string'||dirname(destination)!==dirname(temporary)||!STAGING.test(basename(temporary)))throw Error('Некорректный путь временного файла.');
