@@ -52,7 +52,7 @@ async function openItem(i,f){setActive(i);try{if(f.dir)await navigate(i,f.path);
 async function chooseFolder(i){try{const p=await api.choose(panes[i].path);if(p)await navigate(i,p);}catch(e){fail(e);}}
 let inputResolve,confirmResolve;
 function ask(title,value='',help='',secret=false){if(inputResolve)return Promise.resolve(null);$('inputTitle').textContent=title;$('inputHelp').textContent=help;$('inputValue').type=secret?'password':'text';$('inputValue').value=value;$('inputDialog').showModal();$('inputValue').focus();$('inputValue').select();return new Promise(r=>inputResolve=r);}
-$('inputForm').onsubmit=e=>{e.preventDefault();const r=inputResolve;inputResolve=null;r?.($('inputValue').value);$('inputDialog').close();};$('inputCancel').onclick=()=>$('inputDialog').close();$('inputDialog').onclose=()=>{inputResolve?.(null);inputResolve=null;};
+$('inputForm').onsubmit=e=>{e.preventDefault();const r=inputResolve;inputResolve=null;const value=$('inputValue').value;$('inputValue').value='';r?.(value);$('inputDialog').close();};$('inputCancel').onclick=()=>$('inputDialog').close();$('inputDialog').onclose=()=>{$('inputValue').value='';$('inputValue').type='text';inputResolve?.(null);inputResolve=null;};
 function confirmOperation(title,details){$('confirmTitle').textContent=title;$('confirmDetails').textContent=details;$('confirmDialog').showModal();return new Promise(r=>confirmResolve=r);}
 $('confirmOK').onclick=()=>{const r=confirmResolve;confirmResolve=null;r?.(true);$('confirmDialog').close();};$('confirmCancel').onclick=()=>$('confirmDialog').close();$('confirmDialog').onclose=()=>{confirmResolve?.(false);confirmResolve=null;};
 async function refresh(){await Promise.all(panes.map((p,i)=>navigate(i,p.path,false)));}
