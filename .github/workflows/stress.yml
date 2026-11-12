@@ -1,0 +1,26 @@
+name: Directory stress and performance qualification
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'core.js'
+      - 'renderer.js'
+      - 'commander-model.js'
+      - 'qa/stress-directories.cjs'
+      - '.github/workflows/stress.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  directory-stress:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Directory benchmark (50,000 files)
+        run: node qa/stress-directories.cjs --count 50000
+      - name: Directory benchmark (100,000 files)
+        run: node qa/stress-directories.cjs --count 100000
