@@ -41,3 +41,92 @@ dialog{border-radius:4px;padding:12px;max-width:calc(100vw - 24px);max-height:ca
 .toolbar .navigation-actions button[hidden],.toolbar-custom[hidden]{display:none!important}
 .toolbar-custom{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0 10px}
 .toolbar-custom label{display:inline-flex;gap:5px;align-items:center}
+
+
+/* Release layout pass: consistent, DPI-safe controls without losing the compact file grid. */
+:root{--ui-control-height:27px;--ui-dialog-gap:10px}
+.app-heading,.toolbar,.navigation-actions,.view-actions,.queue-heading,.queue-controls,.dialog-title,.dialog-actions{
+  align-items:center;min-width:0;
+}
+.app-heading{gap:8px;flex:0 0 auto}
+.app-heading .brand,.app-heading .view-actions{min-width:0}
+.app-heading .brand b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.view-actions,.navigation-actions{display:flex;flex-wrap:nowrap;gap:4px}
+.toolbar{flex:0 0 auto;gap:4px;align-items:center;overflow-x:auto;overflow-y:visible}
+.toolbar .navigation-actions{flex:0 0 auto}
+.toolbar .command-menu{flex:0 0 auto}
+.toolbar .quick-search{margin-left:auto;min-width:120px;flex:1 1 185px}
+.toolbar .quick-search input{min-width:0;width:100%}
+#workspace,#panes,.pane,.table-wrap{min-height:0}
+#panes{min-width:0}
+.pane .tabs{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;flex:0 0 auto}
+.pane .tabs button{flex:0 0 auto;max-width:185px;overflow:hidden;text-overflow:ellipsis}
+.pane .address,.pane .places{min-width:0}
+.pane .address input,.pane .places select{min-width:0}
+#queuePanel{flex:0 1 auto;min-height:29px;max-height:min(40vh,320px);overflow-y:auto}
+#queuePanel.collapsed{flex-basis:29px;max-height:29px;min-height:29px}
+.queue-heading{display:flex;gap:7px}
+.queue-heading #queueOverview{flex:1 1 auto;min-width:0}
+.queue-heading #queueClose{flex:0 0 auto}
+.queue-controls{display:flex;gap:8px;flex-wrap:wrap}
+.queue-controls label{min-width:0}
+#queueItems .task{min-width:0;overflow-wrap:anywhere}
+#queueItems .task button,#queueItems .task select{max-width:100%}
+footer.functions{grid-template-columns:repeat(8,minmax(0,1fr));min-width:0}
+.functions button{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.functions kbd{white-space:nowrap}
+dialog,dialog.tool-dialog{
+ box-sizing:border-box;
+ width:min(900px,calc(100vw - 32px));
+ max-width:calc(100vw - 32px);
+ max-height:calc(100vh - 32px);
+ overflow:auto;
+}
+dialog.tool-dialog{
+ height:min(620px,calc(100vh - 32px));
+ min-width:0;
+ min-height:0;
+ resize:both;
+}
+dialog .dialog-title{display:flex;gap:10px;justify-content:space-between;margin:0 0 var(--ui-dialog-gap)}
+dialog .dialog-title h2{min-width:0;flex:1;overflow-wrap:anywhere}
+dialog .dialog-title button{flex:0 0 auto}
+dialog .dialog-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:7px;min-width:0}
+dialog .dialog-actions button,dialog .dialog-actions select{flex:0 0 auto;max-width:100%}
+dialog .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+dialog .form-grid label{min-width:0}
+dialog input:not([type=checkbox]),dialog textarea,dialog select{max-width:100%;box-sizing:border-box}
+dialog .result-list{max-width:100%;overflow-x:auto}
+dialog pre{max-width:100%;overflow-x:auto;overflow-wrap:anywhere}
+#settingsDialog>.check{margin:7px 0}
+#settingsDialog>.dialog-actions{margin:9px 0}
+#settingsDialog>.toolbar-custom{gap:6px;margin:6px 0}
+#settingsDialog>.toolbar-custom button{min-height:24px}
+#networkDialog .dialog-actions input{min-width:100px;flex:1}
+#syncDialog .dialog-actions button{white-space:normal}
+#archiveDialog .dialog-actions button{white-space:normal}
+:root[data-theme=light] dialog{background:var(--panel);color:var(--text);border-color:var(--line)}
+:root[data-theme=light] .status,:root[data-theme=light] .queue-heading,:root[data-theme=light] #queuePanel{background:var(--panel);color:var(--text)}
+:root[data-theme=light] .tab,:root[data-theme=light] .summary,:root[data-theme=light] .disk{color:var(--text)}
+:root[data-theme=light] .functions .accent,:root[data-theme=light] .functions .danger{background:var(--panel);color:var(--text)}
+@media(max-width:950px){
+ .toolbar{flex-wrap:nowrap}
+ .toolbar .quick-search{flex:0 0 180px}
+ dialog .form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .functions button{padding:3px 2px;font-size:10px}
+}
+@media(max-width:720px){
+ .app-heading{padding-inline:6px}
+ .app-heading .brand b{font-size:12px}
+ .view-actions button{padding-inline:4px}
+ dialog .form-grid{grid-template-columns:minmax(0,1fr)}
+ dialog.tool-dialog{width:calc(100vw - 20px);height:calc(100vh - 20px);max-height:calc(100vh - 20px);resize:none}
+ footer.functions{grid-template-columns:repeat(4,minmax(0,1fr))}
+ .toolbar .quick-search{display:none}
+ .pane .tabs button{max-width:110px}
+}
+@media(max-height:640px){
+ #queuePanel{max-height:28vh}
+ dialog,dialog.tool-dialog{max-height:calc(100vh - 16px)}
+ dialog .dialog-title{position:sticky;top:-12px;z-index:2;background:var(--panel,#1b2027);padding:6px 0}
+}
