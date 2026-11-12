@@ -26,7 +26,7 @@ test('interrupted SFTP download resumes the verified prefix and preserves existi
   createReadStream(p,options={}){
    const from=options.start||0;
    starts.push(from);
-   if(!interrupted){interrupted=true;return Readable.from((async function*(){yield full.subarray(0,32768);throw Object.assign(Error('connection reset'),{code:'ECONNRESET'});})());}
+   if(!interrupted){interrupted=true;return Readable.from((async function*(){yield full.subarray(0,32768);await new Promise(resolve=>setTimeout(resolve,80));throw Object.assign(Error('connection reset'),{code:'ECONNRESET'});})());}
    return Readable.from([full.subarray(from)]);
   }
  };
