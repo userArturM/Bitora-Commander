@@ -37,6 +37,20 @@ document.addEventListener('keydown',e=>{if(!e.ctrlKey||!e.altKey||e.shiftKey||e.
 const theme=el('select');theme.id='uiTheme';theme.setAttribute('aria-label','Тема оформления');for(const [value,label] of [['lime','Bitora Dark Lime'],['graphite','Bitora Graphite'],['light','Bitora Light']])theme.add(new Option(label,value));theme.value=['lime','graphite','light'].includes(uiPreferences.theme)?uiPreferences.theme:'lime';document.documentElement.dataset.theme=theme.value;const themeLabel=el('label','check','Тема оформления ');themeLabel.append(theme);$('settingsDialog').prepend(themeLabel);theme.onchange=()=>{uiPreferences.theme=theme.value;document.documentElement.dataset.theme=theme.value;saveUi();};
 const density=el('select');density.id='density';density.setAttribute('aria-label','Плотность интерфейса');for(const [value,label]of [['ultra','Максимально компактный · 20 px'],['compact','Компактный · 24 px'],['normal','Обычный · 30 px'],['large','Крупный · 36 px']])density.add(new Option(label,value));density.value=uiPreferences.density||'compact';document.documentElement.dataset.density=density.value;const densityLabel=el('label','check','Плотность интерфейса ');densityLabel.append(density);$('settingsDialog').prepend(densityLabel);density.onchange=()=>{uiPreferences.density=density.value;saveUi();document.documentElement.dataset.density=density.value;panes.forEach((_,i)=>ensureCursor(i));};
 const speedLabel=el('label','check','Лимит копирования '),speedSelect=el('select');speedSelect.id='transferSpeedLimit';speedSelect.setAttribute('aria-label','Ограничение скорости копирования');for(const [value,label] of [['0','Без ограничений'],['1','1 МБ/с'],['5','5 МБ/с'],['10','10 МБ/с'],['25','25 МБ/с'],['50','50 МБ/с']])speedSelect.add(new Option(label,value));speedSelect.value=localStorage.getItem('bitora-transfer-limit')||'0';speedLabel.append(speedSelect);$('settingsDialog').prepend(speedLabel);speedSelect.onchange=()=>localStorage.setItem('bitora-transfer-limit',speedSelect.value);
+ // Keep the title first and group dynamic controls instead of prepending them above the dialog header.
+ const settingsDialog=$('settingsDialog'),settingsHeader=settingsDialog.querySelector('.dialog-title');
+ const settingsSection=(title,cls)=>{const section=el('section','settings-section '+cls),heading=el('h3','',title);section.append(heading);return section;};
+ const appearance= settingsSection('Внешний вид и панель команд','settings-appearance');
+ const appearanceGrid=el('div','settings-grid');appearance.append(appearanceGrid);
+ appearanceGrid.append(themeLabel,densityLabel,toolbarModeLabel,toolbarLabel,toolbarCustom,toolbarOrderLabel);
+ const hotkeysSection=settingsSection('Горячие клавиши','settings-hotkeys');
+ const shortcutHeader=el('div','settings-section-heading');shortcutHeader.append(shortcutsTitle,resetShortcuts);hotkeysSection.append(shortcutHeader,shortcutsBox);
+ const otherSection=settingsSection('Общие настройки и операции','settings-general');
+ otherSection.append(speedLabel);
+ const grouped=new Set([settingsHeader,appearance,hotkeysSection,otherSection]);
+ for(const child of [...settingsDialog.children])if(!grouped.has(child))otherSection.append(child);
+ settingsDialog.replaceChildren(settingsHeader,appearance,hotkeysSection,otherSection);
+
 const pause=el('button','queue-compact-pause','Ⅱ');pause.title='Приостановить / продолжить передачу';$('queueClose').before(pause);pause.onclick=()=>{$('queuePaused').checked=!$('queuePaused').checked;$('queuePaused').dispatchEvent(new Event('change'));pause.textContent=$('queuePaused').checked?'▶':'Ⅱ';};
 let chunkFile='',chunkOffset=0,chunkData,chunkSeq=0;
 async function loadChunk(){const seq=++chunkSeq;const d=await api.readChunk(chunkFile,chunkOffset,$('chunkEncoding').value);if(seq!==chunkSeq)return;chunkData=d;$('chunkText').textContent=d.text;$('chunkPosition').textContent=size(d.offset)+' — '+size(d.next)+' / '+size(d.size);$('chunkPrev').disabled=!d.offset;$('chunkNext').disabled=d.next>=d.size;}
