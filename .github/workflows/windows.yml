@@ -20,7 +20,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $ids = gh run list --workflow windows.yml --branch main --json databaseId,status --jq '.[] | select(.status == "in_progress" or .status == "queued") | .databaseId'
+          $ids = gh run list --workflow windows.yml --branch $env:GITHUB_REF_NAME --json databaseId,status --jq '.[] | select(.status == "in_progress" or .status == "queued") | .databaseId'
           foreach ($id in $ids) { if ([long]$id -lt [long]$env:GITHUB_RUN_ID) { gh run cancel $id } }
       - uses: actions/setup-node@v4
         with:
