@@ -35,3 +35,23 @@ test('archive password validation rejects newlines and excess input',()=>{
  assert.throws(()=>A.validPassword('X'.repeat(513)),/пароль/);
  assert.equal(A.validPassword('simple'),'simple');
 });
+
+test('AES-256 ZIP requires password for extraction and restores data',{skip:!enabled},async t=>{
+ const root=await fixture(t),source=path.join(root,'secret.txt'),archive=path.join(root,'aes.zip');
+ await fs.writeFile(source,'encrypted zip payload');
+ await A.create([source],archive,{password:'ZIP secret 123'});
+ await assert.rejects(A.verify(archive,{password:'incorrect'}),/7-Zip/);
+ assert.equal((await A.verify(archive,{password:'ZIP secret 123'})).ok,true);
+ const extracted=await A.extract(archive,root,null,{password:'ZIP secret 123'});
+ assert.equal(await fs.readFile(path.join(extracted,'secret.txt'),'utf8'),'encrypted zip payload');
+});
+test('missing split volume never publishes a partial extraction',{skip:!enabled},async t=>{
+ const root=await fixture(t),source=path.join(root,'payload.bin'),archive=path.join(root,'split.7z');
+ await fs.writeFile(source,require('node:crypto').randomBytes(2500000));
+ const volumes=await A.create([source],archive,{volumeBytes:1048576});
+ assert.ok(volumes.length>=2);
+ await fs.unlink(volumes[1]);
+ await assert.rejects(A.extract(volumes[0],root),/7-Zip|archive|volume|невозможно/i);
+ assert.equal((await fs.readdir(root)).some(n=>n.endsWith(' — распаковано')),false);
+ assert.equal((await fs.readdir(root)).some(n=>n.startsWith('.bitora-extract-')),false);
+});
