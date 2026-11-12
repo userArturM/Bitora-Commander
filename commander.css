@@ -130,3 +130,11 @@ dialog pre{max-width:100%;overflow-x:auto;overflow-wrap:anywhere}
  dialog,dialog.tool-dialog{max-height:calc(100vh - 16px)}
  dialog .dialog-title{position:sticky;top:-12px;z-index:2;background:var(--panel,#1b2027);padding:6px 0}
 }
+
+/* Dropdowns must not be clipped by a scrolling toolbar. */
+.toolbar{overflow:visible;flex-wrap:wrap}
+.toolbar .command-menu{position:relative;z-index:40}
+.toolbar .command-menu[open]{z-index:60}
+.toolbar .command-popup{z-index:80;max-width:min(330px,calc(100vw - 24px));overflow-y:auto}
+:root[data-theme=light] .command-popup{background:var(--panel);border-color:var(--line);color:var(--text)}
+@media(max-width:950px){.toolbar{flex-wrap:wrap}}
