@@ -41,6 +41,9 @@ module.exports=async({win,app,C})=>{
     const errors=[],inside=(element,label)=>{const r=element.getBoundingClientRect();if(r.width<10||r.x < -2||r.right>innerWidth+2||r.y < -2||r.bottom>innerHeight+2)errors.push(label+':'+JSON.stringify([r.x,r.y,r.width,r.height]));};
     inside(document.querySelector('.app-heading'),'heading');
     inside(document.querySelector('.toolbar'),'toolbar');
+    const menu=document.querySelector('.command-menu');menu.open=true;
+    const popup=menu.querySelector('.command-popup');inside(popup,'command-popup');
+    menu.open=false;
     inside(document.querySelector('footer.functions'),'F-key-row');
     for(const id of ['settingsDialog','networkDialog','archiveDialog','searchDialog','syncDialog','helpDialog','chunkDialog']){
      const d=document.getElementById(id);if(!d)continue;
