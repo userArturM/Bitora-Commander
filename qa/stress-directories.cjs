@@ -28,9 +28,10 @@ async function main(){
   assert.equal(sample.size,count,'duplicate entries detected');
   for(const n of [0,Math.floor(count/2),count-1])
    assert.ok(sample.has('file-'+String(n).padStart(6,'0')+'.txt'));
-  const search=await measure('search',()=>C.search(root,'file-00'));
-  assert.ok(search.results.length>0,'search found no matching files');
-  assert.ok(search.results.every(x=>x.name.includes('file-00')));
+  const last='file-'+String(count-1).padStart(6,'0')+'.txt';
+  const search=await measure('search-last-file',()=>C.search(root,last));
+  assert.equal(search.results.length,1,'search did not find last file');
+  assert.equal(search.results[0].name,last);
   await measure('sort',async()=>{const sorted=[...listing.items].sort((a,b)=>a.name.localeCompare(b.name));assert.equal(sorted.length,count);});
   record.peakHeapMiB=Math.round(process.memoryUsage().heapUsed/1024/1024);
   process.stdout.write(JSON.stringify(record,null,2)+'\n');
