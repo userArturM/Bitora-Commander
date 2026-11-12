@@ -40,7 +40,18 @@ class Queue{
  emit(){this.notify(this.snapshot());while(this.items.length>200){const index=this.items.findIndex(i=>!this.active.has(i)&&!['waiting','running'].includes(i.status));if(index<0)break;this.items.splice(index,1);}}
  add(label,fn,retryOf,priority=0,resource=null){if(![-1,0,1].includes(priority))throw Error('Недопустимый приоритет задачи.');const item={id:crypto.randomUUID(),label,fn,status:'waiting',retryOf,priority,resource};this.items.push(item);this.emit();this.pump();return item.id;}
  setConcurrency(value){if(!Number.isInteger(value)||value<1||value>4)throw Error('Количество одновременных операций должно быть от 1 до 4.');this.concurrency=value;this.pump();return value;}
- conflict(item){return [...this.active].some(current=>!item.resource||!current.resource||C.inside(current.resource,item.resource)||C.inside(item.resource,current.resource));}
+ conflict(item){
+  const normalize=value=>typeof value==='string'?{reads:[],writes:[value]}:value;
+  const overlaps=(a,b)=>C.inside(a,b)||C.inside(b,a);
+  const a=normalize(item.resource);
+  return [...this.active].some(current=>{
+   const b=normalize(current.resource);
+   if(!a||!b)return true;
+   if(!Array.isArray(a.reads)||!Array.isArray(a.writes)||!Array.isArray(b.reads)||!Array.isArray(b.writes))return true;
+   return a.writes.some(p=>[...b.reads,...b.writes].some(q=>overlaps(p,q)))||
+    b.writes.some(p=>a.reads.some(q=>overlaps(p,q)));
+  });
+ }
  pump(){if(this.paused)return;while(this.active.size<this.concurrency){const item=this.items.filter(i=>i.status==='waiting'&&!this.conflict(i)).sort((a,b)=>b.priority-a.priority)[0];if(!item)break;this.run(item);}}
  async run(item){this.active.add(item);this.running=item;item.status='running';item.controller=new AbortController();item.controller.signal.waitIfPaused=()=>this.waitIfPaused(item.controller.signal);const start=Date.now();let last=0;this.emit();try{item.result=await item.fn(item.controller.signal,p=>{const elapsed=Math.max(.1,(Date.now()-start)/1000),speed=(p.completed||0)/elapsed;item.progress={...p,speed,eta:speed>0?Math.max(0,(p.total-p.completed)/speed):null};if(Date.now()-last>150){last=Date.now();this.emit();}});item.status=item.result?.failures?.length?'failed':'done';if(item.status==='failed')item.error=item.result.failures.map(f=>f.path+': '+f.message).join('\n');}catch(e){item.status=item.controller.signal.aborted||e.name==='AbortError'?'cancelled':'failed';item.error=e.message;}finally{this.log({time:new Date().toISOString(),label:item.label,status:item.status,error:item.error});this.active.delete(item);this.running=this.active.values().next().value||null;this.emit();this.pump();}}
  clearFinished(){const before=this.items.length;this.items=this.items.filter(i=>['waiting','running'].includes(i.status));this.emit();return before-this.items.length;}
