@@ -7,7 +7,7 @@ function validPassword(password){
  if(typeof password!=='string'||password.length>512||/[\r\n\0]/.test(password))throw Error('Недопустимый пароль архива.');
  return password;
 }
-function passwordArgs(password){return password?['-p']:[];}
+// 7z.exe on Windows does not reliably accept a redirected password prompt. Password is visible in transient child process arguments.\nfunction passwordArgs(password){return password?['-p'+password]:[];}
 function run(args,{cwd,signal,maxOutput=32*1024*1024,password}={}){
  password=validPassword(password);
  return new Promise((resolve,reject)=>{
@@ -16,7 +16,7 @@ function run(args,{cwd,signal,maxOutput=32*1024*1024,password}={}){
   let out='',err='',settled=false;
   const fail=e=>{if(!settled){settled=true;reject(e);}};
   child.stdin.on('error',e=>{if(e.code!=='EPIPE')fail(e);});
-  if(password)child.stdin.end(password+'\n'+(args[0]==='a'?password+'\n':''));else child.stdin.end();
+  child.stdin.end();
   child.stdout.on('data',b=>{out+=b.toString('utf8');if(out.length>maxOutput)child.kill();});
   child.stderr.on('data',b=>{err=(err+b.toString('utf8')).slice(-4000);});
   child.on('error',fail);
