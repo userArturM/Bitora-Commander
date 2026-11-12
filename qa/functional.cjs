@@ -55,6 +55,24 @@ module.exports=async({win,app,C})=>{
   }
  }
  await js('document.documentElement.dataset.theme="lime"');
+ // Windows DPI/zoom: controls and panes must remain reachable at 125%, 150%, 200%.
+ const previousZoom=win.webContents.getZoomFactor();
+ try{
+  win.setContentSize(1360,850);
+  for(const zoom of [1.25,1.5,2]){
+   win.webContents.setZoomFactor(zoom);
+   await new Promise(resolve=>setTimeout(resolve,150));
+   const problems=await js(`(()=>{
+    const bad=[],bounds=(element,name)=>{const r=element.getBoundingClientRect();if(r.width<8||r.x< -2||r.right>innerWidth+2||r.y< -2||r.bottom>innerHeight+2)bad.push(name);};
+    bounds(document.querySelector('.app-heading'),'header');
+    bounds(document.querySelector('.toolbar'),'toolbar');
+    bounds(document.querySelector('footer.functions'),'functions');
+    if(document.documentElement.scrollWidth>innerWidth+2)bad.push('horizontal-overflow');
+    for(const d of ['settingsDialog','networkDialog']){const dialog=document.getElementById(d);dialog.showModal();bounds(dialog,d);dialog.close();}
+    return bad;})()`);
+   assert.deepEqual(problems,[],'layout at zoom '+zoom);
+  }
+ }finally{win.webContents.setZoomFactor(previousZoom);}
  win.setContentSize(1360,850);
  // Folder display and navigation regressions with actual Windows entries.
  await js('api.watch([])');
