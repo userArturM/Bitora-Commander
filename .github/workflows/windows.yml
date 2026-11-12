@@ -34,6 +34,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: ./qa/prepare-7zip.ps1
       - run: npm test
+      - name: Directory load regression (10,000 files)
+        run: node qa/stress-directories.cjs --count 10000
       - name: Native application functional tests
         shell: pwsh
         run: ./qa/windows.ps1 -Executable "$pwd/node_modules/electron/dist/electron.exe" -AppArguments '. --functional-test' -Label source
