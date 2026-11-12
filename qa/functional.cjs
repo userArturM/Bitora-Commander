@@ -34,7 +34,7 @@ module.exports=async({win,app,C})=>{
  // Layout audit in actual Electron windows: dialogs, toolbar and F-key row remain within the viewport.
  for(const [width,height] of [[900,600],[1360,850]]){
   win.setContentSize(width,height);
-  await wait('innerWidth>='+Math.min(width,850)+'&&innerHeight>='+Math.min(height,550));
+  await wait('Math.abs(innerWidth-'+width+')<15&&Math.abs(innerHeight-'+height+')<15');
   for(const theme of ['lime','graphite','light']){
    await js('document.documentElement.dataset.theme='+JSON.stringify(theme));
    const geometry=await js(`(()=>{
