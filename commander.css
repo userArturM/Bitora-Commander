@@ -34,7 +34,6 @@ dialog{border-radius:4px;padding:12px;max-width:calc(100vw - 24px);max-height:ca
 
 /* Compact toolbar presets retain all commands in menus and shortcuts. */
 :root[data-toolbar-mode=minimal] .toolbar .quick-search{display:none}
-:root[data-toolbar-mode=minimal] .toolbar .navigation-actions button:nth-child(2){display:none}
 :root[data-toolbar-mode=navigation] .toolbar .quick-search,:root[data-toolbar-mode=navigation] .toolbar .command-menu{display:none}
 :root[data-toolbar-mode=navigation] .toolbar{min-height:28px}
 
