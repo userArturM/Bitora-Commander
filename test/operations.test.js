@@ -124,3 +124,29 @@ test('early interruption retains a zero-length recovery record and permits a cle
  assert.deepEqual(await fs.readFile(path.join(dest,'interrupted.bin')),bytes);
  await assert.rejects(fs.stat(temporary),{code:'ENOENT'});
 });
+
+test('abruptly killed transfer leaves a verified recoverable staging file', {timeout:20000},async t=>{
+ const {root,src,dest}=await setup(t),source=path.join(src,'crash.bin'),recoveryFile=path.join(root,'crash-recovery.json');
+ await fs.writeFile(source,Buffer.alloc(2*1024*1024,81));
+ const {spawn}=require('node:child_process');
+ const worker=spawn(process.execPath,[path.join(__dirname,'../qa/kill-copy-worker.cjs'),source,dest,recoveryFile],{stdio:['ignore','pipe','pipe','ipc']});
+ t.after(()=>{if(worker.exitCode===null)worker.kill();});
+ let stderr='';worker.stderr.on('data',b=>stderr+=b.toString());
+ const copying=await new Promise((resolve,reject)=>{
+  const timeout=setTimeout(()=>reject(Error('Worker did not begin streaming: '+stderr)),12000);
+  worker.on('message',msg=>{if(msg.type==='copying'){clearTimeout(timeout);resolve(true);}else if(msg.type==='finished'){clearTimeout(timeout);reject(Error('Worker finished unexpectedly'));}});
+  worker.on('error',e=>{clearTimeout(timeout);reject(e);});
+  worker.on('exit',code=>{clearTimeout(timeout);reject(Error('Worker exited before crash test: '+code+' '+stderr));});
+ });
+ assert.equal(copying,true);
+ await new Promise(resolve=>setTimeout(resolve,120));
+ worker.kill();
+ await new Promise(resolve=>worker.once('exit',resolve));
+ const record=JSON.parse(await fs.readFile(recoveryFile,'utf8'));
+ assert.equal(record.source,source);
+ const check=await require('../resume-local').verifyPartial(source,path.join(dest,'crash.bin'),record.temporary);
+ assert.ok(check.offset>=0&&check.offset<2*1024*1024);
+ const recovered=await O.transfer([source],dest,{resumePartials:{[source]:record.temporary},preservePartial:true,onPartial:async()=>{}});
+ assert.deepEqual(recovered.failures,[]);
+ assert.deepEqual(await fs.readFile(path.join(dest,'crash.bin')),await fs.readFile(source));
+});
