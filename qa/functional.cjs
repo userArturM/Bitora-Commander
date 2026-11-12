@@ -114,6 +114,21 @@ module.exports=async({win,app,C})=>{
  await js('panes[0].tabs[panes[0].index].pinned=true;newTab(0)');const tabsBefore=await js('panes[0].tabs.length');await js(`navigate(0,${JSON.stringify(toolsRoot)})`);await js('panes[0].index=0;navigate(0,panes[0].tabs[0].path,false)');assert.equal(await js('panes[0].tabs.length'),tabsBefore);await js('panes[0].tabs.forEach(t=>t.pinned=false)');
  const command=await js(`api.commandRun(${JSON.stringify(many)},'echo BITORA_QA')`);assert.ok(command.output.includes('BITORA_QA'));assert.equal(command.code,0);
  await js(`openArchive(${JSON.stringify(seven)})`);assert.equal(await js('panes[0].archive.entries.some(e=>e.name==="Тест.txt")'),true);await js('leaveArchive(0)');
+ if(process.env.BITORA_CAPTURE_UI==='1'){
+  const folder=path.join(__dirname,'screenshots');
+  await fs.mkdir(folder,{recursive:true});
+  win.setContentSize(1360,850);
+  await new Promise(resolve=>setTimeout(resolve,180));
+  for(const theme of ['lime','graphite','light']){
+   await js('document.documentElement.dataset.theme='+JSON.stringify(theme));
+   await new Promise(resolve=>setTimeout(resolve,100));
+   await fs.writeFile(path.join(folder,'commander-'+theme+'.png'),(await win.webContents.capturePage()).toPNG());
+  }
+  await js('document.documentElement.dataset.theme="lime";document.getElementById("settingsDialog").showModal()');
+  await new Promise(resolve=>setTimeout(resolve,100));
+  await fs.writeFile(path.join(folder,'commander-settings.png'),(await win.webContents.capturePage()).toPNG());
+  await js('document.getElementById("settingsDialog").close()');
+ }
  const foreign=await js('document.querySelectorAll(".pane").length');assert.equal(foreign,2);assert.equal(await js('document.documentElement.scrollWidth<=innerWidth'),true);
  return {passed:true,checks:['native app startup','Cyrillic and special paths','two real directory panels','confirmed copy through UI','UTF-8 editor save through UI','tabs','ZIP create and extract via worker','recursive search','mkdir and rename','no horizontal overflow','native file clipboard','Windows shell icons','DPAPI protected password','live folder watcher','bundled 7-Zip create/list/selective extraction','advanced text search','inline UTF-8 preview','inline image preview','queue dock does not overlap file panels','grouped command menus','editable breadcrumb address','responsive narrow window','vector folder icons','real mouse double-click opens folder','filter resets between folders','filtered-out files excluded from operations','batch rename dialog and apply','recursive folder size','duplicate grouping and keep-one guard','column visibility','diagnostic export','update download with SHA-256 verification','test mode cannot execute installers']};
  }finally{await fs.rm(root,{recursive:true,force:true});}
