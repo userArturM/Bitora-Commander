@@ -7,7 +7,8 @@ function validPassword(password){
  if(typeof password!=='string'||password.length>512||/[\r\n\0]/.test(password))throw Error('Недопустимый пароль архива.');
  return password;
 }
-// 7z.exe on Windows does not reliably accept a redirected password prompt. Password is visible in transient child process arguments.\nfunction passwordArgs(password){return password?['-p'+password]:[];}
+// 7z.exe on Windows does not reliably accept a redirected password prompt. Password is visible in transient child process arguments.
+function passwordArgs(password){return password?['-p'+password]:[];}
 function run(args,{cwd,signal,maxOutput=32*1024*1024,password}={}){
  password=validPassword(password);
  return new Promise((resolve,reject)=>{
