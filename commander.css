@@ -187,3 +187,15 @@ dialog pre{max-width:100%;overflow-x:auto;overflow-wrap:anywhere}
  #queuePanel .queue-controls #queueClearFinished{margin-left:0}
  #queuePanel #queueItems .task{grid-template-columns:minmax(0,1fr) auto}
 }
+
+/* Final visual audit corrections based on captured Windows dialogs. */
+#networkDialog #networkProfiles{flex:1 1 230px;min-width:185px;max-width:445px;height:28px}
+#networkDialog .dialog-actions:has(#networkProfiles){justify-content:flex-end}
+#networkDialog .form-grid label:has(#netRemember){flex-direction:row;justify-content:flex-start;align-items:center;gap:8px;min-height:28px}
+#networkDialog .form-grid label:has(#netRemember) input{flex:0 0 auto;margin:0}
+#archiveDialog #archivePassword{width:min(340px,56vw);min-width:170px;height:28px}
+#archiveDialog label:has(#archivePassword){display:flex;align-items:center;gap:9px;margin:8px 0;flex-wrap:wrap}
+#queuePanel .task[data-state=done] progress{display:none}
+:root[data-theme=graphite] .task-progress progress::-webkit-progress-value{background:var(--lime)}
+:root[data-theme=light] .task-progress progress::-webkit-progress-value{background:var(--lime)}
+@media(max-width:720px){#networkDialog #networkProfiles{max-width:100%;min-width:120px}}
