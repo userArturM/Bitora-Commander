@@ -12,7 +12,7 @@ function run(args,{cwd,signal,maxOutput=32*1024*1024,password}={}){
  password=validPassword(password);
  return new Promise((resolve,reject)=>{
   let child;
-  try{child=spawn(binary,[...args,...passwordArgs(password)],{cwd,windowsHide:true,signal,stdio:['pipe','pipe','pipe']});}catch(e){return reject(e);}
+  try{const split=args.indexOf('--'),argv=split<0?[...args,...passwordArgs(password)]:[...args.slice(0,split),...passwordArgs(password),...args.slice(split)];child=spawn(binary,argv,{cwd,windowsHide:true,signal,stdio:['pipe','pipe','pipe']});}catch(e){return reject(e);}
   let out='',err='',settled=false;
   const fail=e=>{if(!settled){settled=true;reject(e);}};
   child.stdin.on('error',e=>{if(e.code!=='EPIPE')fail(e);});
