@@ -35,3 +35,19 @@ test('concurrent queue runs independent resources but serializes overlapping des
  q.pause(false);for(let n=0;n<100&&q.snapshot().some(x=>['waiting','running'].includes(x.status));n++)await new Promise(r=>setTimeout(r,10));
  assert.equal(max,2);assert.equal(q.snapshot().filter(x=>x.status==='done').length,3);assert.ok(starts.indexOf('same')>starts.indexOf('a'));assert.throws(()=>q.setConcurrency(5),/1 до 4/);
 });
+
+test('clearing queue history retains waiting and running tasks',async()=>{
+ const q=new O.Queue();q.pause(true);
+ const done=q.add('finished',async()=>{});
+ q.pause(false);
+ for(let i=0;i<100&&q.snapshot().some(x=>x.status==='running'||x.status==='waiting');i++)await new Promise(r=>setTimeout(r,5));
+ assert.equal(q.snapshot().find(x=>x.id===done)?.status,'done');
+ q.pause(true);
+ const waiting=q.add('waiting',async()=>{});
+ assert.equal(q.clearFinished(),1);
+ assert.equal(q.snapshot().length,1);
+ assert.equal(q.snapshot()[0].id,waiting);
+ q.cancel(waiting);
+ assert.equal(q.clearFinished(),1);
+ assert.deepEqual(q.snapshot(),[]);
+});
