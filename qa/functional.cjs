@@ -128,7 +128,39 @@ module.exports=async({win,app,C})=>{
   await new Promise(resolve=>setTimeout(resolve,100));
   await fs.writeFile(path.join(folder,'commander-settings.png'),(await win.webContents.capturePage()).toPNG());
   await js('document.getElementById("settingsDialog").close()');
+  for(const id of ['networkDialog','searchDialog','syncDialog','archiveDialog','helpDialog','workScanDialog','renameManyDialog']){
+   const opened=await js('!!document.getElementById('+JSON.stringify(id)+')');
+   if(!opened)continue;
+   await js('document.getElementById('+JSON.stringify(id)+').showModal()');
+   await new Promise(resolve=>setTimeout(resolve,75));
+   await fs.writeFile(path.join(folder,'dialog-'+id+'.png'),(await win.webContents.capturePage()).toPNG());
+   await js('document.getElementById('+JSON.stringify(id)+').close()');
+  }
+  await js('document.getElementById("settingsDialog").close()');
  }
+ // Final release UI audit: every dialog, every visible button and keyboard shortcuts.
+ for(const [width,height] of [[1360,850],[900,600]]){
+  win.setContentSize(width,height);
+  await wait('Math.abs(innerWidth-'+width+')<15&&Math.abs(innerHeight-'+height+')<15');
+  const problems=await js(`(()=>{
+   const issues=[];
+   for(const dialog of document.querySelectorAll('dialog')){
+    if(dialog.open)continue;
+    dialog.showModal();
+    const r=dialog.getBoundingClientRect();
+    if(r.x< -2||r.y< -2||r.right>innerWidth+2||r.bottom>innerHeight+2)issues.push(dialog.id+':outside-window');
+    const heading=dialog.querySelector('.dialog-title');
+    if(heading&&heading.getBoundingClientRect().top<r.top-2)issues.push(dialog.id+':title-outside');
+    dialog.close();
+   }
+   for(const button of document.querySelectorAll('button')){
+    if(button.hidden||button.closest('[hidden]')||!button.getClientRects().length)continue;
+    if(!(button.getAttribute('aria-label')||button.title||button.textContent||'').trim())issues.push('unlabeled-button');
+   }
+   return issues;})()`);
+  assert.deepEqual(problems,[],'full dialogs and keyboard controls '+width+'x'+height);
+ }
+ win.setContentSize(1360,850);
  const foreign=await js('document.querySelectorAll(".pane").length');assert.equal(foreign,2);assert.equal(await js('document.documentElement.scrollWidth<=innerWidth'),true);
  return {passed:true,checks:['native app startup','Cyrillic and special paths','two real directory panels','confirmed copy through UI','UTF-8 editor save through UI','tabs','ZIP create and extract via worker','recursive search','mkdir and rename','no horizontal overflow','native file clipboard','Windows shell icons','DPAPI protected password','live folder watcher','bundled 7-Zip create/list/selective extraction','advanced text search','inline UTF-8 preview','inline image preview','queue dock does not overlap file panels','grouped command menus','editable breadcrumb address','responsive narrow window','vector folder icons','real mouse double-click opens folder','filter resets between folders','filtered-out files excluded from operations','batch rename dialog and apply','recursive folder size','duplicate grouping and keep-one guard','column visibility','diagnostic export','update download with SHA-256 verification','test mode cannot execute installers']};
  }finally{await fs.rm(root,{recursive:true,force:true});}
