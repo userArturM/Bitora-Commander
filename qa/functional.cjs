@@ -136,7 +136,6 @@ module.exports=async({win,app,C})=>{
    await fs.writeFile(path.join(folder,'dialog-'+id+'.png'),(await win.webContents.capturePage()).toPNG());
    await js('document.getElementById('+JSON.stringify(id)+').close()');
   }
-  await js('document.getElementById("settingsDialog").close()');
  }
  // Final release UI audit: every dialog, every visible button and keyboard shortcuts.
  for(const [width,height] of [[1360,850],[900,600]]){
