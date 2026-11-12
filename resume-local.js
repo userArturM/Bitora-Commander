@@ -18,13 +18,21 @@ async function prefixHash(file,bytes,signal){
  if(seen!==bytes)throw Error('Частичный файл изменён или усечён.');
  return hash.digest('hex');
 }
-async function verifyPartial(source,destination,temporary,signal){
+async function validatePartialPath(destination,temporary){
+ if(typeof destination!=='string'||typeof temporary!=='string')throw Error('Некорректный путь временного файла.');
  const [destDir,tmpDir]=await Promise.all([fs.realpath(dirname(destination)),fs.realpath(dirname(temporary))]);
  validStaging(join(destDir,basename(destination)),join(tmpDir,basename(temporary)));
+ const stat=await fs.lstat(temporary);
+ if(!stat.isFile()||stat.isSymbolicLink())throw Error('Временный объект не является обычным файлом.');
+ return temporary;
+}
+async function verifyPartial(source,destination,temporary,signal){
+ await validatePartialPath(destination,temporary);
+ if(basename(source)!==basename(destination))throw Error('Сохранённая передача с переименованным назначением требует нового копирования.');
  const [src,tmp]=await Promise.all([fs.lstat(source),fs.lstat(temporary)]);
  if(!src.isFile()||!tmp.isFile()||tmp.size>src.size)throw Error('Частичная копия не соответствует исходному файлу.');
  const [a,b]=await Promise.all([prefixHash(source,tmp.size,signal),prefixHash(temporary,tmp.size,signal)]);
  if(a!==b)throw Error('Частичная копия не совпадает с исходным файлом (SHA-256).');
  return {offset:tmp.size,total:src.size,sourceMtimeMs:src.mtimeMs};
 }
-module.exports={validStaging,prefixHash,verifyPartial};
+module.exports={validStaging,validatePartialPath,prefixHash,verifyPartial};
