@@ -38,7 +38,16 @@ jobs:
         run: node qa/stress-directories.cjs --count 10000
       - name: Native application functional tests
         shell: pwsh
+        env:
+          BITORA_CAPTURE_UI: '1'
         run: ./qa/windows.ps1 -Executable "$pwd/node_modules/electron/dist/electron.exe" -AppArguments '. --functional-test' -Label source
+      - name: Upload Windows UI audit screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Bitora-Commander-UI-Audit
+          path: qa/screenshots/*.png
+          if-no-files-found: ignore
       - run: npm run dist:win
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
