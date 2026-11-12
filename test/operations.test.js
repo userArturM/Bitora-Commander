@@ -76,7 +76,7 @@ test('queue prevents a writer racing with another task reading the same file tre
  assert.equal(q.snapshot().filter(x=>x.status==='done').length,3);
  assert.ok(starts.indexOf('writer')>starts.indexOf('reader'));
  assert.ok(events.indexOf('end-reader')<events.indexOf('start-writer'));
- assert.ok(starts.indexOf('independent')<finish.indexOf('reader'));
+ assert.ok(events.indexOf('start-independent')<events.indexOf('end-reader'));
 });
 test('queue permits independent read-only access to the same source',async()=>{
  const q=new O.Queue();q.pause(true);q.setConcurrency(2);let running=0,max=0;
