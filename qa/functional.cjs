@@ -30,7 +30,29 @@ module.exports=async({win,app,C})=>{
  assert.equal(await js('document.getElementById("panes").getBoundingClientRect().bottom<=document.getElementById("queuePanel").getBoundingClientRect().top+1'),true);
  await js('document.querySelector(".command-menu summary").click()');await wait('document.querySelector(".command-menu").open');await js('closeMenus()');
  await js('editPath(0)');assert.equal(await js('panes[0].root.classList.contains("edit-path")'),true);await js('panes[0].root.classList.remove("edit-path")');
- win.setContentSize(900,600);await js('previewRequested=false;applyPreviewLayout()');await wait('document.getElementById("previewPanel").hidden');assert.equal(await js('document.documentElement.scrollWidth<=innerWidth'),true);win.setContentSize(1360,850);
+ win.setContentSize(900,600);await js('previewRequested=false;applyPreviewLayout()');await wait('document.getElementById("previewPanel").hidden');assert.equal(await js('document.documentElement.scrollWidth<=innerWidth'),true);
+ // Layout audit in actual Electron windows: dialogs, toolbar and F-key row remain within the viewport.
+ for(const [width,height] of [[900,600],[1360,850]]){
+  win.setContentSize(width,height);
+  await wait('innerWidth>='+Math.min(width,850)+'&&innerHeight>='+Math.min(height,550));
+  for(const theme of ['lime','graphite','light']){
+   await js('document.documentElement.dataset.theme='+JSON.stringify(theme));
+   const geometry=await js(`(()=>{
+    const errors=[],inside=(element,label)=>{const r=element.getBoundingClientRect();if(r.width<10||r.x < -2||r.right>innerWidth+2||r.y < -2||r.bottom>innerHeight+2)errors.push(label+':'+JSON.stringify([r.x,r.y,r.width,r.height]));};
+    inside(document.querySelector('.app-heading'),'heading');
+    inside(document.querySelector('.toolbar'),'toolbar');
+    inside(document.querySelector('footer.functions'),'F-key-row');
+    for(const id of ['settingsDialog','networkDialog','archiveDialog','searchDialog','syncDialog','helpDialog','chunkDialog']){
+     const d=document.getElementById(id);if(!d)continue;
+     d.showModal();inside(d,id);
+     for(const child of d.querySelectorAll('.dialog-title button,.dialog-actions button')){const r=child.getBoundingClientRect();if(r.width&&r.right>d.getBoundingClientRect().right+2)errors.push(id+':button-right');}
+     d.close();
+    }return errors;})()`);
+   assert.deepEqual(geometry,[],'layout '+width+'x'+height+' '+theme);
+  }
+ }
+ await js('document.documentElement.dataset.theme="lime"');
+ win.setContentSize(1360,850);
  // Folder display and navigation regressions with actual Windows entries.
  await js('api.watch([])');
  await js(`navigate(0,${JSON.stringify(left)})`);
