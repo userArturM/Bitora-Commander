@@ -41,3 +41,24 @@ test('interrupted SFTP download resumes the verified prefix and preserves existi
  assert.ok(starts.some(x=>x>0&&x<full.length),'transfer must resume from a verified offset');
  assert.equal(remote.partials.size,0);
 });
+
+test('upload rejects server-side corruption before replacing an existing file',async t=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'bitora-upload-integrity-'));
+ t.after(()=>fs.rm(dir,{recursive:true,force:true}));
+ const source=path.join(dir,'report.bin'),original=Buffer.from('ORIGINAL'),data=Buffer.from('payload!');
+ await fs.writeFile(source,data);
+ const {Writable}=require('node:stream'),files=new Map([['/report.bin',original]]);
+ let renamed=false;
+ const client={
+  async list(folder){return [...files.entries()].filter(([name])=>path.posix.dirname(name)===folder).map(([name,bytes])=>({name:path.posix.basename(name),size:bytes.length,modifyTime:1000,type:'-'}));},
+  createWriteStream(name){const chunks=[];return new Writable({write(chunk,enc,cb){chunks.push(Buffer.from(chunk));cb();},final(cb){files.set(name,Buffer.concat(chunks));cb();}});},
+  createReadStream(name){const content=files.get(name);return Readable.from([name.includes('.bitora-upload-')?Buffer.alloc(content.length,0):content]);},
+  async rename(){renamed=true;throw Error('Should not publish corrupted data');}
+ };
+ const remote={config:{protocol:'sftp',host:'localhost',port:22,user:'test',fingerprint:'trusted'},partials:new Map(),use:fn=>fn(client,true)};
+ const expected={size:original.length,date:1000,dir:false,link:false};
+ await assert.rejects(N.upload(remote,source,'/',{replace:true,expected}),/SHA-256/);
+ assert.deepEqual(files.get('/report.bin'),original);
+ assert.equal(renamed,false);
+ assert.equal(remote.partials.size,1);
+});
