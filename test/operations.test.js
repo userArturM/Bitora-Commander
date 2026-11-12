@@ -88,3 +88,39 @@ test('queue permits independent read-only access to the same source',async()=>{
  assert.equal(max,2);
  assert.equal(q.snapshot().filter(x=>x.status==='done').length,2);
 });
+
+test('local copy registers staging before first bytes and clears record after successful publication',async t=>{
+ const {src,dest}=await setup(t),file=path.join(src,'startup.bin'),data=Buffer.alloc(1024*1024,57);
+ await fs.writeFile(file,data);
+ const events=[];
+ const result=await O.transfer([file],dest,{preservePartial:true,onPartial:async event=>{
+  events.push(event);
+  if(!event.clear){
+   const st=await fs.stat(event.temporary);
+   assert.equal(st.isFile(),true);
+   if(event.size===0)assert.equal(st.size,0,'recovery record must exist before streaming');
+  }
+ }});
+ assert.deepEqual(result.failures,[]);
+ assert.equal(events[0].size,0);
+ assert.equal(events.at(-1).clear,true);
+ assert.equal(events[0].temporary,events.at(-1).temporary);
+ assert.deepEqual(await fs.readFile(path.join(dest,'startup.bin')),data);
+ await assert.rejects(fs.stat(events[0].temporary),{code:'ENOENT'});
+});
+test('early interruption retains a zero-length recovery record and permits a clean resume',async t=>{
+ const {src,dest}=await setup(t),file=path.join(src,'interrupted.bin'),bytes=Buffer.alloc(1024*1024,99);
+ await fs.writeFile(file,bytes);
+ const controller=new AbortController(),records=[];
+ await assert.rejects(O.transfer([file],dest,{signal:controller.signal,preservePartial:true,onPartial:async record=>{
+  records.push(record);
+  if(record.size===0)controller.abort();
+ }}));
+ assert.ok(records.length>=1);
+ const temporary=records[0].temporary;
+ assert.equal((await require('../resume-local').verifyPartial(file,path.join(dest,'interrupted.bin'),temporary)).offset,0);
+ const result=await O.transfer([file],dest,{resumePartials:{[file]:temporary},preservePartial:true,onPartial:async()=>{}});
+ assert.deepEqual(result.failures,[]);
+ assert.deepEqual(await fs.readFile(path.join(dest,'interrupted.bin')),bytes);
+ await assert.rejects(fs.stat(temporary),{code:'ENOENT'});
+});
