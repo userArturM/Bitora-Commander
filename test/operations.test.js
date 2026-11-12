@@ -51,3 +51,15 @@ test('clearing queue history retains waiting and running tasks',async()=>{
  assert.equal(q.clearFinished(),1);
  assert.deepEqual(q.snapshot(),[]);
 });
+
+test('clearing finished entries does not cancel an active transfer task',async()=>{
+ const q=new O.Queue();let release;const gate=new Promise(resolve=>{release=resolve;});
+ const id=q.add('active',async()=>{await gate;return {done:['ok']};});
+ assert.equal(q.snapshot().find(x=>x.id===id).status,'running');
+ assert.equal(q.clearFinished(),0);
+ assert.equal(q.snapshot().length,1);
+ release();
+ for(let n=0;n<100&&q.snapshot().find(x=>x.id===id)?.status==='running';n++)await new Promise(resolve=>setTimeout(resolve,5));
+ assert.equal(q.snapshot().find(x=>x.id===id)?.status,'done');
+ assert.equal(q.clearFinished(),1);
+});
