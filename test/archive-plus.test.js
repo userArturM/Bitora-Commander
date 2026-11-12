@@ -31,7 +31,7 @@ test('split archive can be extracted from first volume',{skip:!enabled},async t=
  assert.deepEqual(await fs.readFile(path.join(target,'random.bin')),await fs.readFile(name));
 });
 test('archive password validation rejects newlines and excess input',()=>{
- assert.throws(()=>A.validPassword('line\\nbreak'),/пароль/);
+ assert.throws(()=>A.validPassword('line\nbreak'),/пароль/);
  assert.throws(()=>A.validPassword('X'.repeat(513)),/пароль/);
  assert.equal(A.validPassword('simple'),'simple');
 });
