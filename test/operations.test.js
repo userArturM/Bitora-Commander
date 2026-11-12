@@ -66,8 +66,8 @@ test('clearing finished entries does not cancel an active transfer task',async()
 
 test('queue prevents a writer racing with another task reading the same file tree',async()=>{
  const q=new O.Queue();q.pause(true);q.setConcurrency(3);
- const activity=[],starts=[],finish=[];
- const run=label=>async()=>{activity.push(label);starts.push(label);await new Promise(resolve=>setTimeout(resolve,50));activity.splice(activity.indexOf(label),1);finish.push(label);};
+ const activity=[],starts=[],finish=[],events=[];
+ const run=label=>async()=>{activity.push(label);starts.push(label);events.push('start-'+label);await new Promise(resolve=>setTimeout(resolve,50));activity.splice(activity.indexOf(label),1);finish.push(label);events.push('end-'+label);};
  q.add('reader',run('reader'),undefined,0,{reads:['C:\\work\\source\\file.bin'],writes:['D:\\output\\a']});
  q.add('writer',run('writer'),undefined,0,{reads:['E:\\other'],writes:['C:\\work\\source']});
  q.add('independent',run('independent'),undefined,0,{reads:['F:\\data'],writes:['G:\\output']});
@@ -75,7 +75,7 @@ test('queue prevents a writer racing with another task reading the same file tre
  for(let n=0;n<100&&q.snapshot().some(x=>['running','waiting'].includes(x.status));n++)await new Promise(resolve=>setTimeout(resolve,10));
  assert.equal(q.snapshot().filter(x=>x.status==='done').length,3);
  assert.ok(starts.indexOf('writer')>starts.indexOf('reader'));
- assert.ok(finish.indexOf('reader')<starts.indexOf('writer'));
+ assert.ok(events.indexOf('end-reader')<events.indexOf('start-writer'));
  assert.ok(starts.indexOf('independent')<finish.indexOf('reader'));
 });
 test('queue permits independent read-only access to the same source',async()=>{
