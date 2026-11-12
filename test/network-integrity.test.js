@@ -36,7 +36,7 @@ test('interrupted SFTP download resumes the verified prefix and preserves existi
  assert.deepEqual(await fs.readFile(dest),original,'destination must survive interrupted replacement');
  assert.equal(remote.partials.size,1);
  const result=await N.download(remote,'/download.bin',dir,{replace:true,expected:before});
- assert.equal(result,dest);
+ assert.equal(await fs.realpath(result),await fs.realpath(dest));
  assert.deepEqual(await fs.readFile(dest),full);
  assert.ok(starts.some(x=>x>0&&x<full.length),'transfer must resume from a verified offset');
  assert.equal(remote.partials.size,0);
