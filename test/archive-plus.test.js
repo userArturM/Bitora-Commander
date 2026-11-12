@@ -24,7 +24,7 @@ test('split archive can be extracted from first volume',{skip:!enabled},async t=
  await fs.writeFile(name,require('node:crypto').randomBytes(2500000));
  const volumes=await A.create([name],archive,{volumeBytes:1024*1024});
  assert.ok(volumes.length>=2);
- assert.ok(volumes.every(v=>/\\.7z\\.\\d{3}$/.test(v)));
+ assert.ok(volumes.every(v=>/\.7z\.\d{3}$/.test(v)));
  const verified=await A.verify(volumes[0]);
  assert.equal(verified.ok,true);
  const target=await A.extract(volumes[0],root);
